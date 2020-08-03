@@ -1,0 +1,23 @@
+version: '3'
+services:
+  venus:
+    build: .
+    environment: 
+      PGHOST: 'database'
+      PGPORT: 5432
+      PGUSER: 'venus'
+      PGPASSWORD: '${DBPASSWORD}'
+      PGDATABASE: 'venus'
+    depends_on: 
+      - database
+  database:
+    image: postgres
+    ports:
+      - 5432:5432
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    environment: 
+      POSTGRES_PASSWORD: '${DBPASSWORD}'
+volumes:
+  db-data:
+  

@@ -17,7 +17,9 @@ services:
     volumes:
       - db-data:/var/lib/postgresql/data
     environment: 
+      POSTGRES_USER: 'venus'
       POSTGRES_PASSWORD: '${DBPASSWORD}'
+      POSTGRES_DB: 'venus'
 volumes:
   db-data:
   

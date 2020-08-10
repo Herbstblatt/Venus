@@ -1,4 +1,8 @@
+import logging
+
 import click
+
+from core.client import Venus
 
 @click.group()
 def venus():
@@ -6,7 +10,8 @@ def venus():
 
 @venus.command(help="Runs the logger")
 def run():
-    pass
+    client = Venus(log_level=logging.DEBUG)
+    client.run()
 
 @venus.command(help="Adds a new wiki")
 def add_wiki():

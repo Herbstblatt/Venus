@@ -36,7 +36,7 @@ class Venus:
                                         GROUP BY id;""")
             self.logger.debug("Wiki list was sucsessfully fetched. Handling...")
             for row in wikis:
-                wiki = Wiki(row["id"], row["url"], row["last_check_time"])
+                wiki = Wiki(row["id"], row["url"], row["last_check_time"], self.session)
                 for transport_type, transport_url in zip(row["ttypes"], row["turls"]):
                     wiki.add_transport(transport_type, transport_url)
                 self.logger.debug(f"{row['id']} was processed")
@@ -53,17 +53,30 @@ class Venus:
                 self.logger.info("Polling...")
                 tasks = [asyncio.gather(
                     wiki.fetch_rc(),
-                    wiki.fetch_posts()
+                    wiki.fetch_posts(),
+                    return_exceptions=True
                 ) for wiki in self.wikis]
                 for wiki_index, task in enumerate(asyncio.as_completed(tasks)):
-                    data = await task
+                    rc_data, posts_data = await task
                     wiki = self.wikis[wiki_index]
-                    self.logger.info(f"Ready for {wiki.url}, now handling...")
-                    handled_data = self.handle(*data)
-                    self.tasks.append(self.loop.create_task(wiki.execute_transports(*handled_data)))
+
+                    if isinstance(rc_data, Exception):
+                        self.logger.error(f"Exception occured while requesting data for recent changes in {wiki.url}: {rc_data!r}")
+                        rc_data = None
+                    if isinstance(posts_data, Exception):
+                        self.logger.error(f"Exception occured while requesting data for posts in {wiki.url}: {posts_data!r}")
+                        posts_data = None
+                    
+                    if rc_data or posts_data:
+                        self.logger.info(f"Ready for {wiki.url}, now handling...")
+                        handled_data = self.handle(wiki, rc_data, posts_data)
+                        self.tasks.append(self.loop.create_task(wiki.execute_transports(*handled_data)))
+                    else:
+                        self.logger.error(f"Both requests returned an exception, skipping wiki {wiki.url}.")
+
             await asyncio.sleep(10)
 
-    def handle(self, rc_data, posts_data):
+    def handle(self, wiki, rc_data, posts_data):
         return None, None
 
     async def cleanup(self, signal):

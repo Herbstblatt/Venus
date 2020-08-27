@@ -1,11 +1,14 @@
 import asyncio
 import logging
 import signal
+import datetime
 
 import aiohttp
 import asyncpg
 
-from .wiki import Wiki # pylint: disable=relative-beyond-top-level
+# pylint: disable=relative-beyond-top-level
+from .wiki import Wiki 
+from .handlers import DiscussionsHandler, RCHandler
 
 __version__ = "0.0.1"
 
@@ -52,8 +55,16 @@ class Venus:
             else:
                 self.logger.info("Polling...")
                 tasks = [asyncio.gather(
-                    wiki.fetch_rc(),
-                    wiki.fetch_posts(),
+                    wiki.fetch_rc(
+                        types=["edit", "new", "categorze"],
+                        recent_changes_props=["user", "userid", "ids", "sizes", "flags", "title", "timestamp", "comment"],
+                        logevents_props=["user", "userid", "ids", "type", "title", "timestamp", "comment", "details"],
+                        limit="max",
+                        after=wiki.last_check_time
+                    ),
+                    wiki.fetch_posts(
+                        after=wiki.last_check_time
+                    ),
                     return_exceptions=True
                 ) for wiki in self.wikis]
                 for wiki_index, task in enumerate(asyncio.as_completed(tasks)):
@@ -69,15 +80,37 @@ class Venus:
                     
                     if rc_data or posts_data:
                         self.logger.info(f"Ready for {wiki.url}, now handling...")
-                        handled_data = self.handle(wiki, rc_data, posts_data)
-                        self.tasks.append(self.loop.create_task(wiki.execute_transports(*handled_data)))
+                        self.tasks.append(self.loop.create_task(self.handle(wiki, rc_data, posts_data)))
                     else:
                         self.logger.error(f"Both requests returned an exception, skipping wiki {wiki.url}.")
 
             await asyncio.sleep(10)
 
-    def handle(self, wiki, rc_data, posts_data):
-        return None, None
+    async def handle(self, wiki, rc_data, posts_data):
+        now = datetime.datetime.utcnow()
+        wiki.last_check_time = now
+        async with self.pool.acquire() as conn:
+            await conn.execute("UPDATE wikis SET last_check_time = $1 WHERE id = $2", now, wiki.id)
+        self.logger.info(f"Updated last_check_time for wiki {wiki.url}.")
+
+        handled_data = []
+        if rc_data:
+            self.logger.info(f"Processing RC for wiki {wiki.url}...")
+            rc_handler = RCHandler(self)
+            for entry in rc_data["query"]["recentchanges"] + rc_data["query"]["logevents"]:
+                handled_data.append(rc_handler.handle(entry))
+
+        if posts_data:
+            self.logger.info(f"Processing posts for wiki {wiki.url}...")
+            discussions_handler = DiscussionsHandler(self)
+            for entry in posts_data["_embedded"]["doc:posts"]:
+                handled_data.append(discussions_handler.handle(entry))
+        handled_data.sort(key=lambda e: e["datetime"])
+        self.logger.info(f"Done processing for wiki {wiki.url}.")
+        self.logger.info(f"Data after processing: {handled_data!r}.")
+        
+        await wiki.execute_transports(handled_data)
+
 
     async def cleanup(self, signal):
         """Cleans up all tasks after logger shutdown"""

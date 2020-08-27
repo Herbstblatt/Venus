@@ -31,21 +31,30 @@ class Wiki:
         async with self.session.get(f"https://services.fandom.com/{service}/{self.id}/{url}", params=params) as resp:
             return await resp.json()
 
-    async def fetch_rc(self, *, limit=None, props=None, before=None, after=None, namespaces=None):
+    async def fetch_rc(self, *, limit=None, types=None, show=None, recent_changes_props=None, logevents_props=None, before=None, after=None, namespaces=None):
         """Fetches recent changes data from MediaWiki api"""
         params = {
             "action": "query",
-            "list": "recentchanges",
+            "list": "recentchanges|logevents",
             "format": "json"
         }
         if limit:
             params["rclimit"] = limit
-        if props:
-            params["rcprop"] = "|".join(props)
-        if before:
-            params["rcend"] = before.isoformat() + "Z"
+            params["lelimit"] = limit
+        if types:
+            params["rctype"] = "|".join(types)
+        if show:
+            params["rcshow"] = "|".join(show)
+        if recent_changes_props:
+            params["rcprop"] = "|".join(recent_changes_props)
+        if logevents_props:
+            params["leprop"] = "|".join(logevents_props)
         if after:
-            params["rcstart"] = after.isoformat() + "Z"
+            params["rcend"] = after.isoformat() + "Z"
+            params["leend"] = after.isoformat() + "Z"
+        if before:
+            params["rcstart"] = before.isoformat() + "Z"
+            params["lestart"] = before.isoformat() + "Z"
         if namespaces:
             params["namespaces"] = "|".join([str(ns) for ns in namespaces])
         
@@ -57,9 +66,10 @@ class Wiki:
         if limit:
             params["limit"] = limit
         if before:
-            params["since"] = before.isoformat() + "Z"
+            params["until"] = before.isoformat()[:-3] + "Z" # fandom doesn't accepting timestamps with six-digit milliseconds
         if after:
-            params["until"] = before.isoformat() + "Z"
+            params["since"] = after.isoformat()[:-3] + "Z" # same
+            
         # we have three containers, but fandom supports filtering only by one of them
         if len(containers) != 2:
             # we can request data from all containers or from one specific

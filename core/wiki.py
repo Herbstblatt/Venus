@@ -1,6 +1,11 @@
 import asyncio
 import aiohttp
 
+from ..transports import discord # pylint: disable = relative-beyond-top-level
+
+class InvalidTransportType(Exception):
+    pass
+
 class Wiki:
     def __init__(self, wiki_id, url, last_check_time, session):
         self.url = url
@@ -10,16 +15,15 @@ class Wiki:
         self.transports = []
     
     def add_transport(self, type, url):
-        """Adds a new transport to the list of wiki transports"""
-        pass
-
-    async def execute_transports(self, rc_data, posts_data):
-        """Executes all transports that belongs to this wiki"""
-        pass
+        """Adds a new transport to the list of wiki transports."""
+        if type == "discord":
+            self.transports.append(discord.DiscordTransport(url=url, session=self.session))
+        else:
+            raise InvalidTransportType
 
     def url_to(self, page):
         """Returns URL to the given page"""
-        pass
+        return self.url + "/wiki/" + page.replace(" ", "_")
 
     async def api(self, params=None):
         """Performs request to MediaWiki api with given params"""

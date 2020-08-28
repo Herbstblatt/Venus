@@ -109,8 +109,9 @@ class Venus:
         self.logger.info(f"Done processing for wiki {wiki.url}.")
         self.logger.info(f"Data after processing: {handled_data!r}.")
         
-        await wiki.execute_transports(handled_data)
-
+        self.logger.info(f"Sending data for wiki {wiki.url}...")
+        for transport in wiki.transports:
+            self.tasks.append(self.loop.create_task(transport.execute(handled_data)))
 
     async def cleanup(self, signal):
         """Cleans up all tasks after logger shutdown"""

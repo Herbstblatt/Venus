@@ -10,7 +10,7 @@ class Transport(ABC):
         self.loop = asyncio.get_event_loop()
 
     @abstractmethod
-    def prepare(self, data, mode):
+    def prepare(self, data):
         """Prepares the message to send. This function must be called from `execute` method."""
         pass
 
@@ -19,9 +19,9 @@ class Transport(ABC):
         """Sends the message. This function must be called from `execute` method."""
         pass
 
-    async def execute(self, data, mode):
+    async def execute(self, data):
         """Executes the transport"""
-        message = self.prepare(data, mode)
+        message = self.prepare(data)
         await self.send(message)
 
 class Handler(ABC):

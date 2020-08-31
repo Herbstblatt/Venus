@@ -69,7 +69,9 @@ class Venus:
                 ) for wiki in self.wikis]
                 for wiki_index, task in enumerate(asyncio.as_completed(tasks)):
                     rc_data, posts_data = await task
+                    now = datetime.datetime.utcnow()
                     wiki = self.wikis[wiki_index]
+                    wiki.last_check_time = now
 
                     if isinstance(rc_data, Exception):
                         self.logger.error(f"Exception occured while requesting data for recent changes in {wiki.url}: {rc_data!r}")
@@ -80,19 +82,13 @@ class Venus:
                     
                     if rc_data or posts_data:
                         self.logger.info(f"Ready for {wiki.url}, now handling...")
-                        self.tasks.append(self.loop.create_task(self.handle(wiki, rc_data, posts_data)))
+                        self.tasks.append(self.loop.create_task(self.handle(wiki, rc_data, posts_data, time=now)))
                     else:
                         self.logger.error(f"Both requests returned an exception, skipping wiki {wiki.url}.")
 
             await asyncio.sleep(10)
 
-    async def handle(self, wiki, rc_data, posts_data):
-        now = datetime.datetime.utcnow()
-        wiki.last_check_time = now
-        async with self.pool.acquire() as conn:
-            await conn.execute("UPDATE wikis SET last_check_time = $1 WHERE id = $2", now, wiki.id)
-        self.logger.info(f"Updated last_check_time for wiki {wiki.url}.")
-
+    async def handle(self, wiki, rc_data, posts_data, time):
         handled_data = []
         if rc_data:
             self.logger.info(f"Processing RC for wiki {wiki.url}...")
@@ -110,8 +106,12 @@ class Venus:
         self.logger.info(f"Data after processing: {handled_data!r}.")
         
         self.logger.info(f"Sending data for wiki {wiki.url}...")
-        for transport in wiki.transports:
-            self.tasks.append(self.loop.create_task(transport.execute(handled_data)))
+        tasks = [transport.execute(handled_data) for transport in wiki.transports]
+        await asyncio.gather(*tasks)
+        
+        async with self.pool.acquire() as conn:
+            await conn.execute("UPDATE wikis SET last_check_time = $1 WHERE id = $2", time, wiki.id)
+            self.logger.info(f"Updated last_check_time for wiki {wiki.url}.")
 
     async def cleanup(self, signal):
         """Cleans up all tasks after logger shutdown"""

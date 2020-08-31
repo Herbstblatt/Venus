@@ -1,7 +1,7 @@
 import asyncio
 import aiohttp
 
-from ..transports import discord # pylint: disable = relative-beyond-top-level
+from transports import discord
 
 class InvalidTransportType(Exception):
     pass

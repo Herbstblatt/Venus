@@ -1,4 +1,9 @@
-from .abc import Transport # pylint: disable=relative-beyond-top-level
+from core.abc import Transport
 
 class DiscordTransport(Transport):
-    pass
+
+    def prepare(self, data):
+        pass
+    
+    async def send(self, data):
+        pass

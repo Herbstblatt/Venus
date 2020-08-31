@@ -67,7 +67,7 @@ class RCHandler(Handler):
             },
             "data": {
                 "title": data["title"],
-                "comment": data["comment"],
+                "comment": data["comment"]
             }
         }
         if data["type"] in ("edit", "new", "categorize"):

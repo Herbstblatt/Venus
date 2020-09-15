@@ -1,3 +1,5 @@
+from urllib.parse import urlencode
+
 import asyncio
 import aiohttp
 
@@ -17,13 +19,30 @@ class Wiki:
     def add_transport(self, type, url):
         """Adds a new transport to the list of wiki transports."""
         if type == "discord":
-            self.transports.append(discord.DiscordTransport(url=url, session=self.session))
+            self.transports.append(discord.DiscordTransport(wiki=self, url=url, session=self.session))
         else:
             raise InvalidTransportType
 
-    def url_to(self, page):
+    def url_to(self, page, namespace=None, **params):
         """Returns URL to the given page"""
-        return self.url + "/wiki/" + page.replace(" ", "_")
+        page = page.replace(' ', '_')
+        if namespace:
+            namespace = namespace.replace(' ', '_')
+            url = f"{self.url}/wiki/{namespace}:{page}"
+        else:
+            url = f"{self.url}/wiki/{page}"
+
+        if params:
+            url += ("?" + urlencode(params))
+
+        return url
+
+    def discussions_url(self, thread_id, reply_id=None):
+        """Returns URL to the given post in discussions"""
+        url = f"{self.url}/f/{thread_id}"
+        if reply_id:
+            url += f"/r/{reply_id}"
+        return url
 
     async def api(self, params=None):
         """Performs request to MediaWiki api with given params"""

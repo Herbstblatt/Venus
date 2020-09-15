@@ -4,9 +4,10 @@ import asyncio
 class Transport(ABC):
     """Abstract base class for all transports"""
 
-    def __init__(self, url, session):
+    def __init__(self, wiki, url, session):
         self.url = url
         self.session = session
+        self.wiki = wiki
         self.loop = asyncio.get_event_loop()
 
     @abstractmethod
@@ -21,8 +22,10 @@ class Transport(ABC):
 
     async def execute(self, data):
         """Executes the transport"""
-        message = self.prepare(data)
-        await self.send(message)
+        messages = [self.prepare(entry) for entry in data]
+
+        for message in messages:
+            await self.send(message)
 
 class Handler(ABC):
     """Abstract base class for all handlers"""

@@ -94,6 +94,9 @@ class Venus:
             self.logger.info(f"Processing RC for wiki {wiki.url}...")
             rc_handler = RCHandler(self)
             for entry in rc_data["query"]["recentchanges"] + rc_data["query"]["logevents"]:
+                if entry["type"] == "create":
+                    continue
+                
                 handled_data.append(rc_handler.handle(entry))
 
         if posts_data:
@@ -101,6 +104,7 @@ class Venus:
             discussions_handler = DiscussionsHandler(self)
             for entry in posts_data["_embedded"]["doc:posts"]:
                 handled_data.append(discussions_handler.handle(entry))
+        
         handled_data.sort(key=lambda e: e["datetime"])
         self.logger.info(f"Done processing for wiki {wiki.url}.")
         self.logger.info(f"Data after processing: {handled_data!r}.")

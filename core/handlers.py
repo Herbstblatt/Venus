@@ -28,11 +28,12 @@ class DiscussionsHandler(Handler):
 
         if post_type == "FORUM":
             handled["type"] = "discussions"
-            handled["data"]["title"] = data["title"]
-            handled["data"]["forum"] = data["forumName"]
+            handled["data"]["title"] = data["_embedded"]["thread"][0]["firstPost"]["title"]
+            handled["data"]["forum_name"] = data["forumName"]
+            handled["data"]["forum_id"] = data["forumId"]
         elif post_type == "WALL":
             handled["type"] = "wall"
-            handled["data"]["title"] = data["title"]
+            handled["data"]["title"] = data["_embedded"]["thread"][0]["firstPost"]["title"]
             handled["data"]["wall_owner"] = data["forumName"][:-13]
         elif post_type == "ARTICLE_COMMENT":
             handled["type"] = "comment"

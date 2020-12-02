@@ -2,6 +2,7 @@ import asyncio
 import logging
 import signal
 import datetime
+from collections import namedtuple
 
 import aiohttp
 import asyncpg
@@ -12,13 +13,15 @@ from .handlers import DiscussionsHandler, RCHandler
 
 __version__ = "0.0.1"
 
+RCData = namedtuple("data", "wiki rc posts")
+
 class Venus:
     """Recent changes logger."""
 
     def __init__(self, *, username="Unkhown Fandom User", log_level=logging.INFO):
         self.loop = asyncio.get_event_loop()
         self.session = aiohttp.ClientSession(headers={
-            "User-Agent": f"Venus v{__version__} written by Blask Spaceship, running by {username}"
+            "User-Agent": f"Venus v{__version__} written by Black Spaceship, running by {username}"
         })
         self.pool = self.loop.run_until_complete(asyncpg.create_pool())
         self.wikis = []
@@ -47,6 +50,23 @@ class Venus:
             else:
                 self.logger.warn("There weren't any wikis in db. Please add one with 'python -m venus add-wiki'.")
     
+    async def fetch_data(self, wiki):
+        """Fetches RC data for a given wiki"""
+        rc_data, posts_data = await asyncio.gather(
+            wiki.fetch_rc(
+                types=["edit", "new", "categorze"],
+                recent_changes_props=["user", "userid", "ids", "sizes", "flags", "title", "timestamp", "comment"],
+                logevents_props=["user", "userid", "ids", "type", "title", "timestamp", "comment", "details"],
+                limit="max",
+                after=wiki.last_check_time
+            ),
+            wiki.fetch_posts(
+                after=wiki.last_check_time
+            ),
+            return_exceptions=True
+        )
+        return RCData(wiki=wiki, rc=rc_data, posts=posts_data)
+    
     async def main(self):
         """Main loop function. Polls and processes recent changes every n minutes"""
         while True:
@@ -54,37 +74,29 @@ class Venus:
                 self.logger.warn("There aren't any wikis in db so we're skipping this iteration. We'll retry again in 10 seconds...")
             else:
                 self.logger.info("Polling...")
-                tasks = [asyncio.gather(
-                    wiki.fetch_rc(
-                        types=["edit", "new", "categorze"],
-                        recent_changes_props=["user", "userid", "ids", "sizes", "flags", "title", "timestamp", "comment"],
-                        logevents_props=["user", "userid", "ids", "type", "title", "timestamp", "comment", "details"],
-                        limit="max",
-                        after=wiki.last_check_time
-                    ),
-                    wiki.fetch_posts(
-                        after=wiki.last_check_time
-                    ),
-                    return_exceptions=True
-                ) for wiki in self.wikis]
-                for wiki_index, task in enumerate(asyncio.as_completed(tasks)):
-                    rc_data, posts_data = await task
+                tasks = [self.fetch_data(wiki) for wiki in self.wikis]
+                for task in asyncio.as_completed(tasks):
+                    data = await task
                     now = datetime.datetime.utcnow()
-                    wiki = self.wikis[wiki_index]
-                    wiki.last_check_time = now
+                    data.wiki.last_check_time = now
 
-                    if isinstance(rc_data, Exception):
-                        self.logger.error(f"Exception occured while requesting data for recent changes in {wiki.url}: {rc_data!r}")
+                    if isinstance(data.rc, Exception):
+                        self.logger.error(f"Exception occured while requesting data for recent changes in {data.wiki.url}: {rc_data!r}")
                         rc_data = None
-                    if isinstance(posts_data, Exception):
-                        self.logger.error(f"Exception occured while requesting data for posts in {wiki.url}: {posts_data!r}")
-                        posts_data = None
-                    
-                    if rc_data or posts_data:
-                        self.logger.info(f"Ready for {wiki.url}, now handling...")
-                        self.tasks.append(self.loop.create_task(self.handle(wiki, rc_data, posts_data, time=now)))
                     else:
-                        self.logger.error(f"Both requests returned an exception, skipping wiki {wiki.url}.")
+                        rc_data = data.rc
+
+                    if isinstance(data.posts, Exception):
+                        self.logger.error(f"Exception occured while requesting data for posts in {data.wiki.url}: {posts_data!r}")
+                        posts_data = None
+                    else:
+                        posts_data = data.posts
+
+                    if rc_data or posts_data:
+                        self.logger.info(f"Ready for {data.wiki.url}, now handling...")
+                        self.tasks.append(self.loop.create_task(self.handle(data.wiki, rc_data, posts_data, time=now)))
+                    else:
+                        self.logger.error(f"Both requests returned an exception, skipping wiki {data.wiki.url}.")
 
             await asyncio.sleep(10)
 

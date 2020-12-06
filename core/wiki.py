@@ -43,6 +43,10 @@ class Wiki:
         if reply_id:
             url += f"/r/{reply_id}"
         return url
+    
+    def tag_url(self, article_name):
+        """Returns URL to the given tag discussions"""
+        return f"{self.url}/f/t/{article_name.replace(' ', '_')}"
 
     async def api(self, params=None):
         """Performs request to MediaWiki api with given params"""
@@ -89,7 +93,7 @@ class Wiki:
         if limit:
             params["limit"] = limit
         if before:
-            params["until"] = before.isoformat()[:-3] + "Z" # fandom doesn't accepting timestamps with six-digit milliseconds
+            params["until"] = before.isoformat()[:-3] + "Z" # fandom doesn't accept timestamps with six-digit milliseconds
         if after:
             params["since"] = after.isoformat()[:-3] + "Z" # same
             

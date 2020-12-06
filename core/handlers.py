@@ -31,6 +31,8 @@ class DiscussionsHandler(Handler):
             handled["data"]["title"] = data["_embedded"]["thread"][0]["firstPost"]["title"]
             handled["data"]["forum_name"] = data["forumName"]
             handled["data"]["forum_id"] = data["forumId"]
+            if not data["isReply"]:
+                handled["data"]["tags"] = [tag["articleTitle"] for tag in data["_embedded"]["thread"][0]["tags"]]
         elif post_type == "WALL":
             handled["type"] = "wall"
             handled["data"]["title"] = data["_embedded"]["thread"][0]["firstPost"]["title"]

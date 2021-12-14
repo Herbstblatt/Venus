@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import signal
+import traceback
 import datetime
 from collections import namedtuple
 
@@ -94,7 +95,7 @@ class Venus:
 
                     if rc_data or posts_data:
                         self.logger.info(f"Ready for {data.wiki.url}, now handling...")
-                        self.tasks.append(self.loop.create_task(self.handle(data.wiki, rc_data, posts_data, time=now)))
+                        self.loop.create_task(self.handle(data.wiki, rc_data, posts_data, time=now))
                     else:
                         self.logger.error(f"Both requests returned an exception, skipping wiki {data.wiki.url}.")
 
@@ -114,6 +115,7 @@ class Venus:
         if posts_data:
             self.logger.info(f"Processing posts for wiki {wiki.url}...")
             discussions_handler = DiscussionsHandler(self)
+            self.logger.debug(f"Recieved {posts_data}")
             for entry in posts_data["_embedded"]["doc:posts"]:
                 handled_data.append(discussions_handler.handle(entry))
         
@@ -122,7 +124,9 @@ class Venus:
         self.logger.info(f"Data after processing: {handled_data!r}.")
         
         self.logger.info(f"Sending data for wiki {wiki.url}...")
+        self.logger.debug(wiki.transports)
         tasks = [transport.execute(handled_data) for transport in wiki.transports]
+        
         await asyncio.gather(*tasks)
         
         async with self.pool.acquire() as conn:
@@ -138,9 +142,10 @@ class Venus:
         await self.session.close()
 
         self.logger.info("Cleaning up all tasks...")
-        tasks = [t for t in self.tasks if not t.done()]
+        tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
         for t in tasks:
             t.cancel()
+
         await asyncio.gather(*tasks, return_exceptions=True)
 
         self.loop.stop()
@@ -153,7 +158,7 @@ class Venus:
         
         self.loop.run_until_complete(self.load())
         try:
-            self.tasks.append(self.loop.create_task(self.main()))
+            self.loop.create_task(self.main())
             self.loop.run_forever()
         finally:
             self.loop.close()

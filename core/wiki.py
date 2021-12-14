@@ -58,6 +58,16 @@ class Wiki:
         async with self.session.get(f"https://services.fandom.com/{service}/{self.id}/{url}", params=params) as resp:
             return await resp.json()
 
+    async def query_nirvana(self, **params):
+        """Queries Nirvana with given params"""
+
+        if not self.url:
+            raise RuntimeError("Wiki url is required to do this")
+
+        params["format"] = "json"
+        async with self.session.get(self.url + "/wikia.php", params=params) as resp:
+            return await resp.json()
+
     async def fetch_rc(self, *, limit=None, types=None, show=None, recent_changes_props=None, logevents_props=None, before=None, after=None, namespaces=None):
         """Fetches recent changes data from MediaWiki api"""
         params = {
@@ -102,7 +112,7 @@ class Wiki:
             # we can request data from all containers or from one specific
             if len(containers) == 1:
                 params["containerType"] = params[0]
-            data = await self.services("discussion", "posts", params)
+            data = await self.query_nirvana(controller="DiscussionPost", method="getPosts", **params)
         else:
             # we need to do two requests
             tasks = [self.services("discussion", "posts", {"containerType": t, **params}) for t in containers]

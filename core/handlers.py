@@ -1,7 +1,7 @@
 from datetime import datetime
 import json
 
-from .abc import Handler # pylint: disable=relative-beyond-top-level
+from .abc import Handler 
 
 class DiscussionsHandler(Handler):
     def __init__(self, client):

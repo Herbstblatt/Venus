@@ -9,7 +9,7 @@ import aiohttp
 import asyncpg
 
 # pylint: disable=relative-beyond-top-level
-from .wiki import Wiki 
+from fandom.wiki import Wiki 
 from .handlers import DiscussionsHandler, RCHandler
 
 __version__ = "0.0.1"

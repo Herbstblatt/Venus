@@ -1,5 +1,6 @@
 asyncpg==0.20.1
 aiohttp==3.6.2
+beautifulsoup4
 click==7.1.2
 
 discord.py # for discord transport, remove if not needed

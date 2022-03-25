@@ -1,8 +1,7 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from .wiki import Wiki
+from .wiki import Wiki
 
 @dataclass
 class Account:

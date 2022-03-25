@@ -3,10 +3,9 @@ from dataclasses import dataclass
 
 from typing import Any, Optional, TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from fandom.wiki import Wiki
-    from datetime import datetime
-    from fandom.account import Account
+from fandom.wiki import Wiki
+from datetime import datetime
+from fandom.account import Account
 
 class ActionType(enum.Enum):
   edit = 1 << 0

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List, Union
+from typing import List, Optional, Union
 
 from .wiki import Wiki
 from .account import Account
@@ -18,9 +18,9 @@ class Category:
 @dataclass
 class Thread:
     id: int
-    title: str
+    title: Optional[str]
     parent: Union[Account, Category]
-    first_post: "Post"
+    first_post: Optional["Post"]
     posts: List["Post"]
 
     @property
@@ -32,8 +32,8 @@ class Post:
     id: int
     text: str
     parent: Thread
-    author: Account
-    timestamp: datetime
+    author: Optional[Account]
+    timestamp: Optional[datetime]
 
     @property
     def url(self):

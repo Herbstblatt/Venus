@@ -4,9 +4,11 @@ import signal
 import traceback
 import datetime
 from collections import namedtuple
+from typing import List
 
 import aiohttp
 import asyncpg
+from core.entry import Entry
 
 # pylint: disable=relative-beyond-top-level
 from fandom.wiki import Wiki 
@@ -51,7 +53,7 @@ class Venus:
             else:
                 self.logger.warn("There weren't any wikis in db. Please add one with 'python -m venus add-wiki'.")
     
-    async def fetch_data(self, wiki):
+    async def fetch_data(self, wiki: Wiki) -> RCData:
         """Fetches RC data for a given wiki"""
         rc_data, posts_data = await asyncio.gather(
             wiki.fetch_rc(
@@ -61,7 +63,7 @@ class Venus:
                 limit="max",
                 after=wiki.last_check_time
             ),
-            wiki.fetch_posts(
+            wiki.fetch_social_activity(
                 after=wiki.last_check_time
             ),
             return_exceptions=True
@@ -102,24 +104,22 @@ class Venus:
             await asyncio.sleep(10)
 
     async def handle(self, wiki, rc_data, posts_data, time):
-        handled_data = []
+        handled_data: List[Entry] = []
         if rc_data:
             self.logger.info(f"Processing RC for wiki {wiki.url}...")
-            rc_handler = RCHandler(self)
-            for entry in rc_data["query"]["recentchanges"] + rc_data["query"]["logevents"]:
-                if entry["type"] == "create":
-                    continue
-                
-                handled_data.append(rc_handler.handle(entry))
+            self.logger.debug(f"Recieved {rc_data}")
+            
+            rc_handler = RCHandler(self, wiki)
+            handled_data.extend(rc_handler.handle(rc_data))
 
         if posts_data:
             self.logger.info(f"Processing posts for wiki {wiki.url}...")
-            discussions_handler = DiscussionsHandler(self)
             self.logger.debug(f"Recieved {posts_data}")
-            for entry in posts_data["_embedded"]["doc:posts"]:
-                handled_data.append(discussions_handler.handle(entry))
+
+            discussions_handler = DiscussionsHandler(self, wiki)
+            handled_data.extend(discussions_handler.handle(posts_data))
         
-        handled_data.sort(key=lambda e: e["datetime"])
+        handled_data.sort(key=lambda e: e.timestamp)
         self.logger.info(f"Done processing for wiki {wiki.url}.")
         self.logger.info(f"Data after processing: {handled_data!r}.")
         

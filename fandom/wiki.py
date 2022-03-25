@@ -53,11 +53,6 @@ class Wiki:
         async with self.session.get(self.url + "/api.php", params=params) as resp:
             return await resp.json()
 
-    async def services(self, service, url, params=None):
-        """Performs request to Fandom services api with given params"""
-        async with self.session.get(f"https://services.fandom.com/{service}/{self.id}/{url}", params=params) as resp:
-            return await resp.json()
-
     async def query_nirvana(self, **params):
         """Queries Nirvana with given params"""
 
@@ -66,7 +61,8 @@ class Wiki:
 
         params["format"] = "json"
         async with self.session.get(self.url + "/wikia.php", params=params) as resp:
-            return await resp.json()
+            if resp.status != 204:
+                return await resp.json()
 
     async def fetch_rc(self, *, limit=None, types=None, show=None, recent_changes_props=None, logevents_props=None, before=None, after=None, namespaces=None):
         """Fetches recent changes data from MediaWiki api"""
@@ -97,26 +93,14 @@ class Wiki:
         
         return await self.api(params)
         
-    async def fetch_posts(self, *, limit=None, containers=["ARTICLE_COMMENT", "FORUM", "WALL"], before=None, after=None):
-        """Fetches data about latest posts in discussions"""
-        params = {}
-        if limit:
-            params["limit"] = limit
-        if before:
-            params["until"] = before.isoformat()[:-3] + "Z" # fandom doesn't accept timestamps with six-digit milliseconds
+    async def fetch_social_activity(self, *, after=None):
+        """Fetches data about latest social activity"""
+        params = {
+            "uselang": "en"
+        }
         if after:
-            params["since"] = after.isoformat()[:-3] + "Z" # same
+            params["lastUpdateTime"] = after.timestamp()
             
-        # we have three containers, but fandom supports filtering only by one of them
-        if len(containers) != 2:
-            # we can request data from all containers or from one specific
-            if len(containers) == 1:
-                params["containerType"] = params[0]
-            data = await self.query_nirvana(controller="DiscussionPost", method="getPosts", **params)
-        else:
-            # we need to do two requests
-            tasks = [self.services("discussion", "posts", {"containerType": t, **params}) for t in containers]
-            data = await asyncio.gather(*tasks)
-            data[0]["_embedded"]["doc:posts"].extend(data[1]["_embedded"]["doc:posts"])
+        data = await self.query_nirvana(controller="ActivityApiController", method="getSocialActivity", **params) or []
 
         return data

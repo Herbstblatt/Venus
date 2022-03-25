@@ -1,17 +1,17 @@
+from bs4 import BeautifulSoup
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, List, Union
 from urllib.parse import ParseResult, parse_qs, urlparse
-
-from bs4 import BeautifulSoup
 
 from fandom.account import Account
 from fandom.discussions import Category, Post, Thread
 from fandom.page import PartialPage
 from fandom.wiki import Wiki
-from .abc import Handler
-from .entry import Entry, Action, ActionType
+from core.abc import Handler
+from core.entry import Entry, Action, ActionType
+
 if TYPE_CHECKING:
-    from .client import Venus
+    from core.client import Venus
 
 action_lookup = {
     "create": Action.create_post,
@@ -201,41 +201,3 @@ class DiscussionsHandler(Handler):
             if data["type"] == "text":
                 text += data["text"]
         return text.strip()
-
-
-class RCHandler(Handler):
-    def __init__(self, client, wiki):
-        self.client = client
-        self.wiki = wiki
-
-    def handle(self, data):
-        """handled = {
-            "type": data["type"],
-            "datetime": datetime.fromisoformat(data["timestamp"][:-1]),
-            "author": {
-                "name": data["user"],
-                "id": data["userid"],
-                "avatar": f"https://services.fandom.com/user-avatar/user/{data['userid']}/avatar"
-            },
-            "data": {
-                "title": data["title"],
-                "comment": data["comment"]
-            }
-        }
-        if data["type"] in ("edit", "new", "categorize"):
-            handled["data"].update({
-                "revid": data["revid"],
-                "old_revid": data["old_revid"],
-                "oldlen": data["oldlen"],
-                "newlen": data["newlen"]
-            })
-        else:
-            handled["type"] = "log"
-            handled["data"]["logparams"] = {
-                "type": data["type"],
-                "action": data["action"],
-                **data["params"]
-            }
-
-        return handled"""
-        return []

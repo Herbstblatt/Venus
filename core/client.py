@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import signal
-import traceback
 import datetime
 from collections import namedtuple
 from typing import List

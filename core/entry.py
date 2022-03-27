@@ -1,11 +1,13 @@
 import enum
 from dataclasses import dataclass
 
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, Generic, Optional, TYPE_CHECKING, TypeVar
 
 from fandom.wiki import Wiki
 from datetime import datetime
 from fandom.account import Account
+
+DiffT = TypeVar("DiffT")
 
 class ActionType(enum.Enum):
   edit = 1 << 0
@@ -36,6 +38,10 @@ class Action(enum.Enum):
     create_post = 14
     edit_post = 15
 
+@dataclass
+class Diff(Generic[DiffT]):
+    old: DiffT
+    new: DiffT
 
 @dataclass
 class Entry:

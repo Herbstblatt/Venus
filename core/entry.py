@@ -1,7 +1,8 @@
 import enum
 from dataclasses import dataclass
 
-from typing import Any, Generic, Optional, TYPE_CHECKING, TypeVar
+from typing import Any, Generic, List, Optional, TypeVar, Union
+from fandom.page import Page, PageVersion
 
 from fandom.wiki import Wiki
 from datetime import datetime
@@ -38,18 +39,65 @@ class Action(enum.Enum):
     create_post = 14
     edit_post = 15
 
+
 @dataclass
 class Diff(Generic[DiffT]):
     old: DiffT
     new: DiffT
 
+
+# Edits
+EditParams = Diff[PageVersion]
+
+
+# Rename log
+@dataclass
+class RenameParams:
+    diff: Diff[Page]
+    suppress_redirect: bool
+
+
+# Protection log
+class ProtectionLevel(enum.Enum):
+    everyone = 1
+    autoconfirmed = 2
+    sysop = 3
+
+@dataclass
+class ProtectionParams:
+    create: Optional[ProtectionLevel]
+    edit: Optional[ProtectionLevel]
+    move: Optional[ProtectionLevel]
+    comment: Optional[ProtectionLevel]
+    upload: Optional[ProtectionLevel]
+
+    cascading: bool
+
+
+# Block log
+@dataclass
+class BlockParams:
+    expiry: datetime
+    autoblock_enabled: bool
+    can_edit_talkpage: bool
+    can_create_accounts: bool
+
+# Rights log
+@dataclass
+class Group:
+    name: str
+    expiry: Optional[datetime]
+
+RightsParams = Diff[List[Group]]
+
+
 @dataclass
 class Entry:
     type: ActionType 
     action: Action
-    target: Any # a target the action was done against
-    wiki: Wiki # a wiki the action was made on
-    user: Account # an user who did that action
+    target: Any    # a target the action was done against
+    wiki: Wiki     # a wiki the action was made on
+    user: Account  # an user who did that action
     summary: Optional[str]
-    details: Any
+    details: Union[None, EditParams, RenameParams, ProtectionParams, BlockParams, RightsParams]
     timestamp: datetime

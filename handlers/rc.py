@@ -1,8 +1,9 @@
+from contextlib import suppress
 from typing import List
 
 from datetime import datetime, timezone
 from core.abc import Handler
-from core.entry import Action, ActionType, Diff, Entry
+from core.entry import Action, ActionType, Diff, Entry, RenameParams
 from fandom.account import Account
 from fandom.page import Page, PageVersion
 
@@ -14,7 +15,7 @@ class RCHandler(Handler):
         self.client = client
         self.wiki = wiki
 
-    def handle_edit(self, data):
+    def handle_edit(self, data) -> Entry:
         author = Account(
             name=data["user"],
             id=data["userid"],
@@ -57,9 +58,46 @@ class RCHandler(Handler):
             timestamp=from_mw_timestamp(data["timestamp"])
         )
 
-    def handle_log(self, entry):
-        pass
-    
+    def handle_log(self, data) -> Entry:
+        author = Account(
+            name=data["user"],
+            id=data["userid"],
+            wiki=self.wiki
+        )
+
+        if data["type"] == "move":
+            action = Action.rename_page
+            old_page = Page(
+                id=data["pageid"],
+                name=data["title"],
+                namespace=data["ns"],
+                wiki=self.wiki
+            )
+            new_page = Page(
+                id=data["pageid"],
+                name=data["params"]["target_title"],
+                namespace=data["params"]["target_ns"],
+                wiki=self.wiki
+            )
+            target = old_page
+            details = RenameParams(
+                diff=Diff(old=old_page, new=new_page),
+                suppress_redirect=data["params"].get("suppressredirect") is not None
+            )
+        else:
+            raise NotImplementedError("Other log types are not supported at this time")
+
+        return Entry(
+            type=ActionType.log,
+            action=action,
+            target=target,
+            wiki=self.wiki,
+            user=author,
+            summary=data["comment"],
+            details=details,
+            timestamp=from_mw_timestamp(data["timestamp"])
+        )
+
     def handle(self, data):
         handled_data: List[Entry] = []
 
@@ -67,8 +105,7 @@ class RCHandler(Handler):
             handled_data.append(self.handle_edit(entry))
 
         for entry in data["query"]["logevents"]:
-            if entry["type"] == "create":
-                continue
-            handled_data.append(self.handle_log(entry))
+            with suppress(NotImplementedError):
+                handled_data.append(self.handle_log(entry))
         
         return handled_data

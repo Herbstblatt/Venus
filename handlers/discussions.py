@@ -1,6 +1,6 @@
-from bs4 import BeautifulSoup
-from datetime import datetime, timezone
-from typing import TYPE_CHECKING, List, Union
+from bs4 import BeautifulSoup, Tag
+import datetime
+from typing import TYPE_CHECKING, List, Union, cast
 from urllib.parse import ParseResult, parse_qs, urlparse
 
 from fandom.account import Account
@@ -30,42 +30,43 @@ class DiscussionsHandler(Handler):
         
 
     def handle_entry(self, data, date: datetime.date) -> Entry:
-        time = datetime.strptime(data["time"], "%H:%M").time()
-        timestamp = datetime.combine(date, time, tzinfo=timezone.utc)
+        time = datetime.datetime.strptime(data["time"], "%H:%M").time()
+        timestamp = datetime.datetime.combine(date, time, tzinfo=datetime.timezone.utc)
         action = action_lookup[data["actionType"]]
         content_type = data["contentType"]
 
         soup = BeautifulSoup(data["label"])
-        author = soup.find(attrs={"data-tracking": "action-username__" + content_type}).text
+        author = cast(Tag, soup.find(attrs={"data-tracking": "action-username__" + content_type})).text
         author_account = Account(name=author, id=0, wiki=self.wiki)
         
+        posts: List[Post]
         if content_type in ("post", "post-reply"):
             if content_type == "post":
                 category_class = "action-category__post"
             else:
                 category_class = "action-post-reply-category__post-reply"
 
-            category_element = soup.find(attrs={"data-tracking": category_class})
+            category_element = cast(Tag, soup.find(attrs={"data-tracking": category_class}))
             self.client.logger.debug(category_element.get("href"))
             category = Category(
                 title=category_element.text,
-                id=int(extract_query_param(category_element.get("href"), "catId")),
+                id=int(extract_query_param(cast(str, category_element.get("href")), "catId")),
                 wiki=self.wiki
             )
 
-            thread_element = soup.find(attrs={"data-tracking": f"action-{content_type}__{content_type}"})
+            thread_element = cast(Tag, soup.find(attrs={"data-tracking": f"action-{content_type}__{content_type}"}))
             thread = Thread(
-                id=thread_element.get("href").split("/")[-1],
+                id=int(cast(str, thread_element.get("href")).split("/")[-1]),
                 title=thread_element.text,
                 parent=category,
                 posts=[],
                 first_post=None
             )
 
-            post_link = soup.find(attrs={"data-tracking": f"action-view__{content_type}"}).get("href")
+            post_link = cast(Tag, soup.find(attrs={"data-tracking": f"action-view__{content_type}"})).get("href")
             post = Post(
-                id=int(post_link.split("/")[-1]),
-                text=soup.find("em").text,
+                id=int(cast(str, post_link).split("/")[-1]),
+                text=cast(Tag, soup.find("em")).text,
                 parent=thread,
                 author=author_account,
                 timestamp=timestamp,
@@ -83,16 +84,17 @@ class DiscussionsHandler(Handler):
             else:
                 thread_class = "action-reply-message-wall-parent__message-reply"
             
-            url: ParseResult = urlparse(soup.find(attrs={"data-tracking": f"action-view__{content_type}"}).get("href"))
+            # this is guaranteed to be ParseResult until the api breaks
+            url: ParseResult = urlparse(soup.find(attrs={"data-tracking": f"action-view__{content_type}"}).get("href")) # type: ignore
             target_account = Account(
                 name=url.path.split(":")[-1],
                 id=0,
                 wiki=self.wiki
             )
 
-            thread_element = soup.find(attrs={"data-tracking": thread_class})
+            thread_element = cast(Tag, soup.find(attrs={"data-tracking": thread_class}))
             thread = Thread(
-                id=int(extract_query_param(thread_element.get("href"), "threadId")),
+                id=int(extract_query_param(cast(str, thread_element.get("href")), "threadId")),
                 title=thread_element.text,
                 parent=target_account,
                 posts=[],
@@ -100,7 +102,7 @@ class DiscussionsHandler(Handler):
             )
             post = Post(
                 id=int(url.fragment),
-                text=soup.find("em").text,
+                text=cast(Tag, soup.find("em")).text,
                 parent=thread,
                 author=author_account,
                 timestamp=timestamp,
@@ -118,13 +120,14 @@ class DiscussionsHandler(Handler):
             else:
                 page_class = "action-reply-article-name__comment-reply"
 
-            page_name = soup.find(attrs={"data-tracking": page_class})
+            page_name = cast(Tag, soup.find(attrs={"data-tracking": page_class}))
             page = PartialPage(
-                name=page_name,
+                name=page_name.text,
                 wiki=self.wiki
             )
 
-            url: ParseResult = urlparse(soup.find(attrs={"data-tracking": f"action-view__{content_type}"}).get("href"))
+            # this is guaranteed to be ParseResult until the api breaks
+            url: ParseResult = urlparse(soup.find(attrs={"data-tracking": f"action-view__{content_type}"}).get("href")) # type: ignore
             thread = Thread(
                 id=int(extract_query_param(url, "commentId")),
                 title=None,
@@ -136,7 +139,7 @@ class DiscussionsHandler(Handler):
             if content_type == "comment":
                 first_post = Post(
                     id=thread.id,
-                    text=soup.find("em").text,
+                    text=cast(Tag, soup.find("em")).text,
                     parent=thread,
                     author=author_account,
                     timestamp=timestamp,
@@ -145,30 +148,32 @@ class DiscussionsHandler(Handler):
             else:
                 first_post = Post(
                     id=thread.id,
-                    text=soup.find(
+                    text=cast(Tag, soup.find(
                         attrs={"data-tracking": f"action-reply-parent__comment-reply"}
-                    ).text,
+                    )).text,
                     parent=thread,
                     author=None,
                     timestamp=None,
                 )
                 last_post = Post(
                     id=int(url.fragment),
-                    text=soup.find("em").text,
+                    text=cast(Tag, soup.find("em")).text,
                     parent=thread,
                     author=author_account,
                     timestamp=timestamp,
                 )
                 posts = [first_post, last_post]
+        else:
+            raise RuntimeError("Invalid data recieved")
 
 
-        thread.posts = posts
-        thread.first_post = first_post
+        thread.posts = posts            
+        thread.first_post = first_post  
 
         if content_type in ("post", "message", "comment"):
             target = thread
         else:
-            target = post
+            target = posts[-1]
         
         return Entry(
             type=ActionType.post,
@@ -185,9 +190,14 @@ class DiscussionsHandler(Handler):
     def handle(self, data) -> List[Entry]:
         result = []
         for day in data:
-            date = datetime.strptime(day["date"], "%d %B %Y").date()
+            date = datetime.datetime.strptime(day["date"], "%d %B %Y").date()
             for action in day["actions"]:
-                result.append(self.handle_entry(action, date=date))
+                try:
+                    entry = self.handle_entry(action, date=date)
+                except RuntimeError:
+                    pass
+                else:
+                    result.append(entry)
 
         return result
     

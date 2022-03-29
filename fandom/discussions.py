@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional, Union
 
+from fandom.page import PartialPage
+
 from .wiki import Wiki
 from .account import Account
 
@@ -19,7 +21,7 @@ class Category:
 class Thread:
     id: int
     title: Optional[str]
-    parent: Union[Account, Category]
+    parent: Union[Account, Category, PartialPage]
     first_post: Optional["Post"]
     posts: List["Post"]
 

@@ -83,13 +83,13 @@ class Venus:
                     data.wiki.last_check_time = now
 
                     if isinstance(data.rc, Exception):
-                        self.logger.error(f"Exception occured while requesting data for recent changes in {data.wiki.url}: {rc_data!r}")
+                        self.logger.error(f"Exception occured while requesting data for recent changes in {data.wiki.url}: {data.rc!r}")
                         rc_data = None
                     else:
                         rc_data = data.rc
 
                     if isinstance(data.posts, Exception):
-                        self.logger.error(f"Exception occured while requesting data for posts in {data.wiki.url}: {posts_data!r}")
+                        self.logger.error(f"Exception occured while requesting data for posts in {data.wiki.url}: {data.posts!r}")
                         posts_data = None
                     else:
                         posts_data = data.posts

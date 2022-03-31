@@ -65,6 +65,7 @@ class RCHandler(Handler):
             wiki=self.wiki
         )
 
+        details = None
         if data["type"] == "move":
             action = Action.rename_page
             old_page = Page(
@@ -83,6 +84,18 @@ class RCHandler(Handler):
             details = RenameParams(
                 diff=Diff(old=old_page, new=new_page),
                 suppress_redirect=data["params"].get("suppressredirect") is not None
+            )
+        elif data["type"] == "delete":
+            if data["action"] == "delete":
+                action = Action.delete_page
+            else:
+                action = Action.undelete_page
+            
+            target = Page(
+                id=data["pageid"],
+                name=data["title"],
+                namespace=data["ns"],
+                wiki=self.wiki
             )
         else:
             raise NotImplementedError("Other log types are not supported at this time")

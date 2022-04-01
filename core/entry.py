@@ -29,15 +29,17 @@ class Action(enum.Enum):
     rename_page = 8
 
     upload_file = 9
+    reupload_file = 10
+    revert_file = 11
 
-    block_user = 10
-    change_block_settings = 11
-    unblock_user = 12
+    block_user = 12
+    change_block_settings = 13
+    unblock_user = 14
 
-    change_user_rights = 13
+    change_user_rights = 15
 
-    create_post = 14
-    edit_post = 15
+    create_post = 16
+    edit_post = 17
 
 
 @dataclass

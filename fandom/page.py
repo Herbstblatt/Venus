@@ -18,6 +18,22 @@ class Page(PartialPage):
     namespace: int
 
 @dataclass
+class File:
+    page: Page
+    name: str
+
+    @property
+    def url(self):
+        return self.page.wiki.url_to("Special:FilePath/" + self.name)
+
+    @classmethod
+    def from_page(cls, page: Page):
+        return cls(
+            page=page,
+            name=page.name
+        )
+
+@dataclass
 class PageVersion:
     id: int
     size: int

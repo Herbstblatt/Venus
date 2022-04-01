@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from core.abc import Handler
 from core.entry import Action, ActionType, Diff, Entry, RenameParams
 from fandom.account import Account
-from fandom.page import Page, PageVersion
+from fandom.page import Page, PageVersion, File
 
 def from_mw_timestamp(timestamp) -> datetime:
     return datetime.fromisoformat(timestamp[:-1]).replace(tzinfo=timezone.utc)
@@ -97,6 +97,21 @@ class RCHandler(Handler):
                 namespace=data["ns"],
                 wiki=self.wiki
             )
+        elif data["type"] == "upload":
+            if data["action"] == "upload":
+                action = Action.upload_file
+            elif data["action"] == "overwrite":
+                action = Action.reupload_file
+            else:
+                action = Action.revert_file
+            
+            page = Page(
+                id=data["pageid"],
+                name=data["title"],
+                namespace=data["ns"],
+                wiki=self.wiki
+            )
+            target = File.from_page(page)
         else:
             raise NotImplementedError("Other log types are not supported at this time")
 

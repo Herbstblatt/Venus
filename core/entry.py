@@ -61,19 +61,23 @@ class RenameParams:
 
 # Protection log
 class ProtectionLevel(enum.Enum):
-    everyone = 1
-    autoconfirmed = 2
-    sysop = 3
+    autoconfirmed = "autoconfirmed"
+    sysop = "sysop"
+
+@dataclass
+class ProtectionData:
+    level: ProtectionLevel
+    expiry: Optional[datetime]
 
 @dataclass
 class ProtectionParams:
-    create: Optional[ProtectionLevel]
-    edit: Optional[ProtectionLevel]
-    move: Optional[ProtectionLevel]
-    comment: Optional[ProtectionLevel]
-    upload: Optional[ProtectionLevel]
+    cascade: bool
 
-    cascading: bool
+    create: Optional[ProtectionData] = None
+    edit: Optional[ProtectionData] = None
+    move: Optional[ProtectionData] = None
+    comment: Optional[ProtectionData] = None
+    upload: Optional[ProtectionData] = None
 
 
 # Block log

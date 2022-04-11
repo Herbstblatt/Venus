@@ -3,7 +3,7 @@ from typing import List
 
 from datetime import datetime, timezone
 from core.abc import Handler
-from core.entry import Action, ActionType, Diff, Entry, RenameParams
+from core.entry import Action, ActionType, Diff, Entry, ProtectionData, ProtectionLevel, ProtectionParams, RenameParams
 from fandom.account import Account
 from fandom.page import Page, PageVersion, File
 
@@ -112,6 +112,33 @@ class RCHandler(Handler):
                 wiki=self.wiki
             )
             target = File.from_page(page)
+        elif data["type"] == "protect":
+            if data["action"] == "protect":
+                action = Action.protect_page
+            elif data["action"] == "modify":
+                action = Action.change_protection_settings
+            else:
+                action = Action.unprotect_page
+
+            details = ProtectionParams(cascade=data["params"].get("cascade") is not None)
+            for detail in data["params"].get("details", []):
+                if detail["expiry"] == "infinite":
+                    expiry = None
+                else:
+                    expiry = from_mw_timestamp(detail["expiry"])
+
+                protection_data = ProtectionData(
+                    level=ProtectionLevel(detail["level"]),
+                    expiry=expiry
+                )
+                setattr(details, detail["type"], protection_data)
+            
+            target = Page(
+                id=data["pageid"],
+                name=data["title"],
+                namespace=data["ns"],
+                wiki=self.wiki
+            )
         else:
             raise NotImplementedError("Other log types are not supported at this time")
 

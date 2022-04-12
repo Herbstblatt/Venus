@@ -3,7 +3,7 @@ from typing import List
 
 from datetime import datetime, timezone
 from core.abc import Handler
-from core.entry import Action, ActionType, BlockParams, Diff, Entry, ProtectionData, ProtectionLevel, ProtectionParams, RenameParams
+from core.entry import Action, ActionType, BlockParams, Diff, Entry, Group, ProtectionData, ProtectionLevel, ProtectionParams, RenameParams
 from fandom.account import Account
 from fandom.page import Page, PageVersion, File
 from fandom.wiki import Wiki
@@ -66,7 +66,6 @@ class RCHandler(Handler):
             wiki=self.wiki
         )
 
-        details = None
         if data["type"] == "move":
             action = Action.rename_page
             old_page = Page(
@@ -98,6 +97,7 @@ class RCHandler(Handler):
                 namespace=data["ns"],
                 wiki=self.wiki
             )
+            details = None
         elif data["type"] == "upload":
             if data["action"] == "upload":
                 action = Action.upload_file
@@ -113,6 +113,7 @@ class RCHandler(Handler):
                 wiki=self.wiki
             )
             target = File.from_page(page)
+            details = None
         elif data["type"] == "protect":
             if data["action"] == "protect":
                 action = Action.protect_page
@@ -168,6 +169,38 @@ class RCHandler(Handler):
                 name=data["title"].split(":", 1)[1],
                 id=0,
                 wiki=self.wiki
+            )
+        elif data["type"] == "rights":
+            action = Action.change_user_rights
+            target = Account(
+                name=data["title"].split(":", 1)[1],
+                id=0,
+                wiki=self.wiki
+            )
+
+            old: List[Group] = []
+            new: List[Group] = []
+            for index, metadata in enumerate([
+                data["params"]["oldmetadata"],
+                data["params"]["newmetadata"]
+            ]):
+                for group in metadata:
+                    if group["expiry"] == "infinity":
+                        expiry = None
+                    else:
+                        expiry = from_mw_timestamp(group["expiry"])
+                    
+                    if index == 0:
+                        groups = old
+                    else:
+                        groups = new
+                    groups.append(Group(
+                        name=group["group"],
+                        expiry=expiry
+                    ))
+            details = Diff(
+                old=old,
+                new=new
             )
         else:
             raise NotImplementedError("Other log types are not supported at this time")

@@ -3,15 +3,16 @@ from typing import List
 
 from datetime import datetime, timezone
 from core.abc import Handler
-from core.entry import Action, ActionType, Diff, Entry, ProtectionData, ProtectionLevel, ProtectionParams, RenameParams
+from core.entry import Action, ActionType, BlockParams, Diff, Entry, ProtectionData, ProtectionLevel, ProtectionParams, RenameParams
 from fandom.account import Account
 from fandom.page import Page, PageVersion, File
+from fandom.wiki import Wiki
 
 def from_mw_timestamp(timestamp) -> datetime:
     return datetime.fromisoformat(timestamp[:-1]).replace(tzinfo=timezone.utc)
 
 class RCHandler(Handler):
-    def __init__(self, client, wiki):
+    def __init__(self, client, wiki: Wiki):
         self.client = client
         self.wiki = wiki
 
@@ -137,6 +138,35 @@ class RCHandler(Handler):
                 id=data["pageid"],
                 name=data["title"],
                 namespace=data["ns"],
+                wiki=self.wiki
+            )
+        elif data["type"] == "block":
+            if data["action"] == "block":
+                action = Action.block_user
+            elif data["action"] == "reblock":
+                action = Action.change_block_settings
+            else:
+                action = Action.unblock_user
+            
+            if data["action"] == "unblock":
+                details = None
+            else:
+                params = data["params"]
+                if params.get("expiry") is None:
+                    expiry = None
+                else:
+                    expiry = from_mw_timestamp(params["expiry"])
+                    
+                details = BlockParams(
+                    expiry=expiry,
+                    autoblock_enabled="noautoblock" not in params["flags"],
+                    can_edit_talkpage="nousertalk" not in params["flags"],
+                    can_create_accounts="nocreate" not in params["flags"]
+                )
+
+            target = Account(
+                name=data["title"].split(":", 1)[1],
+                id=0,
                 wiki=self.wiki
             )
         else:

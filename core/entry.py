@@ -83,7 +83,7 @@ class ProtectionParams:
 # Block log
 @dataclass
 class BlockParams:
-    expiry: datetime
+    expiry: Optional[datetime]
     autoblock_enabled: bool
     can_edit_talkpage: bool
     can_create_accounts: bool

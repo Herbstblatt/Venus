@@ -47,7 +47,6 @@ class DiscussionsHandler(Handler):
                 category_class = "action-post-reply-category__post-reply"
 
             category_element = cast(Tag, soup.find(attrs={"data-tracking": category_class}))
-            self.client.logger.debug(category_element.get("href"))
             category = Category(
                 title=category_element.text,
                 id=int(extract_query_param(cast(str, category_element.get("href")), "catId")),
@@ -100,8 +99,13 @@ class DiscussionsHandler(Handler):
                 posts=[],
                 first_post=None
             )
+            
+            try:
+                post_id = int(url.fragment)
+            except ValueError:
+                post_id = thread.id
             post = Post(
-                id=int(url.fragment),
+                id=post_id,
                 text=cast(Tag, soup.find("em")).text,
                 parent=thread,
                 author=author_account,

@@ -1,6 +1,6 @@
 import textwrap
 
-from discord import Embed, Webhook, AsyncWebhookAdapter
+from discord import Embed, Webhook
 
 from core.abc import Transport # pylint: disable = no-name-in-module
 
@@ -91,7 +91,7 @@ class DiscordTransport(Transport):
     
     async def send(self, data):
         data = [entry for entry in data if isinstance(entry, Embed)]
-        webhook = Webhook.from_url(self.url, adapter=AsyncWebhookAdapter(self.session))
+        webhook = Webhook.from_url(self.url, session=self.session)
         await webhook.send(embeds=data)
 
     async def execute(self, data):

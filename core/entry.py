@@ -1,19 +1,22 @@
-import enum
+from __future__ import annotations
+
 from dataclasses import dataclass
-
-from typing import Any, Generic, List, Optional, TypeVar, Union
-from fandom.page import Page, PageVersion
-
-from fandom.wiki import Wiki
 from datetime import datetime
-from fandom.account import Account
+import enum
+from typing import Any, Generic, List, Optional, TypeVar, Union, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from fandom.account import Account
+    from fandom.discussions import Thread, Post
+    from fandom.page import Page, PageVersion, File
+    from fandom.wiki import Wiki
 
 DiffT = TypeVar("DiffT")
 
 class ActionType(enum.Enum):
-  edit = 1 << 0
-  log = 1 << 1
-  post = 1 << 2
+    edit = 1 << 0
+    log = 1 << 1
+    post = 1 << 2
 
 class Action(enum.Enum):
     create_page = 1
@@ -49,7 +52,7 @@ class Diff(Generic[DiffT]):
 
 
 # Edits
-EditParams = Diff[PageVersion]
+EditParams = Diff["PageVersion"]
 
 
 # Rename log
@@ -101,9 +104,9 @@ RightsParams = Diff[List[Group]]
 class Entry:
     type: ActionType 
     action: Action
-    target: Any    # a target the action was done against
-    wiki: Wiki     # a wiki the action was made on
-    user: Account  # an user who did that action
+    target: Union[Thread, Post, Page, File, Account]    # a target the action was done against
+    wiki: Wiki                                          # a wiki the action was made on
+    user: Account                                       # an user who did that action
     summary: Optional[str]
     details: Union[None, EditParams, RenameParams, ProtectionParams, BlockParams, RightsParams]
     timestamp: datetime

@@ -1,5 +1,8 @@
 from abc import ABC, abstractmethod
 import asyncio
+from typing import Any
+
+from core.entry import Entry
 
 class Transport(ABC):
     """Abstract base class for all transports"""
@@ -31,6 +34,6 @@ class Handler(ABC):
     """Abstract base class for all handlers"""
 
     @abstractmethod
-    def handle(self, data):
+    def handle(self, data: Any) -> list[Entry]:
         """Handles the data and returns it in standard JSON format. Subclasses must override this."""
         pass

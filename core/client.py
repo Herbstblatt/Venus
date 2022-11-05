@@ -3,15 +3,17 @@ import logging
 import signal
 import datetime
 from collections import namedtuple
-from typing import List
+from typing import List, TYPE_CHECKING
 
 import aiohttp
 import asyncpg
-from core.entry import Entry
 
 from fandom.wiki import Wiki 
 from handlers.discussions import DiscussionsHandler
 from handlers.rc import RCHandler
+
+if TYPE_CHECKING:
+    from core.entry import Entry
 
 __version__ = "0.0.1"
 
@@ -20,12 +22,12 @@ RCData = namedtuple("data", "wiki rc posts")
 class Venus:
     """Recent changes logger."""
 
-    def __init__(self, *, username="Unkhown Fandom User", log_level=logging.INFO):
+    def __init__(self, *, username: str = "Unkhown Fandom User", log_level: int = logging.INFO):
         self.loop = asyncio.get_event_loop()
         self.session = aiohttp.ClientSession(headers={
             "User-Agent": f"Venus v{__version__} written by Black Spaceship, running by {username}"
         })
-        self.pool = self.loop.run_until_complete(asyncpg.create_pool())
+        self.pool: asyncpg.Pool = self.loop.run_until_complete(asyncpg.create_pool())  # type: ignore
         self.wikis = []
         self.tasks = []
 

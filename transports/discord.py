@@ -1,8 +1,11 @@
-import textwrap
+from typing import TYPE_CHECKING, cast
 
+import discord
 from discord import Embed, Webhook
 
 from core.abc import Transport # pylint: disable = no-name-in-module
+from core.entry import Diff, Entry, ActionType
+from fandom.page import Page, PageVersion
 
 def chunks(lst, n):
     """Yield successive n-sized chunks from list. Was taken from https://stackoverflow.com/a/1751478/11393726"""
@@ -11,91 +14,59 @@ def chunks(lst, n):
 
 class DiscordTransport(Transport):
 
-    def prepare(self, data):
-        if data["type"] in ("discussions", "wall", "comment"):
-            return self._prepare_post(data)
-        elif data["type"] == "log":
-            return self._prepare_log(data)
-        else:
-            return self._prepare_edit(data)
-    
-    def _prepare_post(self, data):
-        if data["type"] == "discussions":
-            if data["data"]["is_reply"]:
-                header = ("➤ **Действие**: [сообщение]({message_url}) в обсуждениях\n"
-                          "➤ **Тема**: [{thread_title}]({thread_url})\n"
-                          "➤ **Категория**: [{category_name}]({wiki_url}/f?catId={category_id})"
-                         ).format(
-                            message_url=self.wiki.discussions_url(data["data"]["thread_id"], data["id"]), 
-                            thread_url=self.wiki.discussions_url(data["data"]["thread_id"]), 
-                            thread_title=data["data"]["title"],
-                            wiki_url=self.wiki.url,
-                            category_id=data["data"]["forum_id"],
-                            category_name=data["data"]["forum_name"]
-                         )
-            else:
-                header = ("➤ **Действие**: новая тема в обсуждениях\n"
-                          "➤ **Название**: [{thread_title}]({thread_url})\n"
-                          "➤ **Категория**: [{category_name}]({wiki_url}/f?catId={category_id})\n"
-                          "➤ **Теги**: {tags}"
-                         ).format(
-                            thread_url=self.wiki.discussions_url(data["id"]), 
-                            thread_title=data["data"]["title"],
-                            wiki_url=self.wiki.url,
-                            category_id=data["data"]["forum_id"],
-                            category_name=data["data"]["forum_name"],
-                            tags=", ".join([f"[{tag}]({self.wiki.tag_url(tag)})" for tag in data["data"]["tags"]]) if data["data"]["tags"] else "—"
-                         )
-        elif data["type"] == "wall":
-            if data["data"]["is_reply"]:
-                header = ("➤ **Действие**: [сообщение]({thread_url}#{message_id}) на стене\n"
-                          "➤ **Тема**: [{thread_title}]({thread_url})"
-                          "➤ **Стена участника**: [{username}]({wall_url})"
-                         ).format(
-                            message_id=data["id"], 
-                            thread_url=self.wiki.url_to(data["author"]["name"], namespace="Message Wall", thread_id=data["data"]["thread_id"]), 
-                            thread_title=data["data"]["title"],
-                            wall_url=self.wiki.url_to(data["author"]["name"], namespace="Message Wall"),
-                            username=data["author"]["name"]
-                         )
-            else:
-                header = ("➤ **Действие**: новая тема на стене\n"
-                          "➤ **Название**: [{thread_title}]({thread_url})\n"
-                          "➤ **Стена участника**: [{username}]({wall_url})"
-                         ).format(
-                            thread_url=self.wiki.url_to(data["author"]["name"], namespace="Message Wall", thread_id=data["id"]), 
-                            thread_title=data["data"]["title"],
-                            wall_url=self.wiki.url_to(data["author"]["name"], namespace="Message Wall"),
-                            username=data["author"]["name"]
-                         )
-        elif data["type"] == "comment":
-            if data["data"]["is_reply"]:
-                header = f"➤ **Действие**: ответ на комментарий к статье."
-            else:
-                header = f"➤ **Действие**: комментарий к статье."
-        em = Embed(description=header, timesatmp=data["datetime"], color=0x2f3136)
-        em.add_field(name="Текст сообщения",
-                     value=textwrap.shorten(data["data"]["content"], width=500, placeholder="..."))
-        em.set_author(name=data["author"]["name"],
-                      url=self.wiki.url_to("User:" + data["author"]["name"].replace(" ", "_")),
-                      icon_url=data["author"]["avatar"])
-        em.set_footer(text=self.wiki.url, icon_url=self.wiki.url_to("Special:FilePath/favicon.ico"))
+    def __init__(self, wiki, url, client):
+        super().__init__(wiki, url, client)
+        self.webhook = Webhook.from_url(self.url, session=self.session)  
 
+    def prepare(self, data: "Entry") -> Embed:
+        if data.type is ActionType.post:
+            embed = self._prepare_post(data)
+        elif data.type is ActionType.log:
+            embed = self._prepare_log(data)
+        else:
+            embed = self._prepare_edit(data)
+        
+        if data.summary:
+            embed.add_field(name="Причина", value=data.summary)
+        embed.set_author(name=data.user.name, url=data.user.page_url, icon_url=data.user.avatar_url)
+        embed.timestamp = data.timestamp
+        return embed
+    
+    def _prepare_edit(self, data: "Entry") -> Embed:
+        assert isinstance(data.target, Page)
+        assert isinstance(data.details, Diff) and isinstance(data.details.old, PageVersion)
+        
+        diff = data.details.new.size - data.details.old.size
+        if diff >= 0:
+            diff_msg = "diff-added"
+        else:
+            diff_msg = "diff-removed"
+
+        em = Embed(
+            title=self.client.l10n.format_value("edit-page", dict(target=data.target.name)),
+            url=data.target.url,
+            description=(
+                "<:venus_edit:941018307421679666> " +
+                self.client.l10n.format_value(diff_msg, dict(diff=diff))
+            ),
+            color=discord.Color.green()
+        )
         return em
 
-    def _prepare_log(self, data):
+    def _prepare_log(self, data: "Entry") -> Embed:
         pass
 
-    def _prepare_edit(self, data):
+    def _prepare_post(self, data: "Entry")-> Embed:
         pass
     
-    async def send(self, data):
-        data = [entry for entry in data if isinstance(entry, Embed)]
-        webhook = Webhook.from_url(self.url, session=self.session)
-        await webhook.send(embeds=data)
+    async def send(self, data: Embed):
+        await self.webhook.send(embed=data)
 
-    async def execute(self, data):
-        messages = [self.prepare(entry) for entry in data]
-
-        for chunk in chunks(messages, 10):
-            await self.send(chunk)
+    async def execute(self, data: list["Entry"]):
+        for entry in data:
+            try:
+                embed = self.prepare(entry)
+            except:
+                self.client.logger.exception("Error while processing entry")
+            else:
+                await self.send(embed)

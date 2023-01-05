@@ -1,12 +1,13 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
-from .wiki import Wiki
+if TYPE_CHECKING:
+    from .wiki import Wiki
 
 @dataclass
 class PartialPage:
     name: str
-    wiki: Wiki
+    wiki: "Wiki"
 
     @property
     def url(self):

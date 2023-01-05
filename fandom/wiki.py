@@ -1,25 +1,31 @@
+from typing import TYPE_CHECKING
 from urllib.parse import urlencode
 
 import asyncio
 import aiohttp
+import datetime
 
 from transports import discord
+
+if TYPE_CHECKING:
+    from core.client import Venus
 
 class InvalidTransportType(Exception):
     pass
 
 class Wiki:
-    def __init__(self, wiki_id, url, last_check_time, session):
+    def __init__(self, wiki_id: int, url: str, last_check_time: datetime.datetime, client: "Venus"):
         self.url = url
         self.id = wiki_id
         self.last_check_time = last_check_time
-        self.session = session
+        self.client = client
+        self.session = client.session
         self.transports = []
     
     def add_transport(self, type, url):
         """Adds a new transport to the list of wiki transports."""
         if type == "discord":
-            self.transports.append(discord.DiscordTransport(wiki=self, url=url, session=self.session))
+            self.transports.append(discord.DiscordTransport(wiki=self, url=url, client=self.client))
         else:
             raise InvalidTransportType
 

@@ -7,6 +7,7 @@ from typing import List, TYPE_CHECKING
 
 import aiohttp
 import asyncpg
+import fluent.runtime
 
 from fandom.wiki import Wiki 
 from handlers.discussions import DiscussionsHandler
@@ -31,6 +32,9 @@ class Venus:
         self.wikis = []
         self.tasks = []
 
+        loader = fluent.runtime.FluentResourceLoader("strings/{locale}")
+        self.l10n = fluent.runtime.FluentLocalization(["ru"], ["main.ftl"], loader)
+
         self.logger = logging.getLogger('venus')
         self.logger.setLevel(log_level)
         handler = logging.StreamHandler()
@@ -46,7 +50,7 @@ class Venus:
                                         GROUP BY id;""")
             self.logger.debug("Wiki list was sucsessfully fetched. Handling...")
             for row in wikis:
-                wiki = Wiki(row["id"], row["url"], row["last_check_time"], self.session)
+                wiki = Wiki(row["id"], row["url"], row["last_check_time"], self)
                 for transport_type, transport_url in zip(row["ttypes"], row["turls"]):
                     wiki.add_transport(transport_type, transport_url)
                 self.logger.debug(f"{row['id']} was processed")

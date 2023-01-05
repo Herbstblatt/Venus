@@ -1,15 +1,19 @@
 from abc import ABC, abstractmethod
 import asyncio
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from core.entry import Entry
+
+if TYPE_CHECKING:
+    from core.client import Venus
 
 class Transport(ABC):
     """Abstract base class for all transports"""
 
-    def __init__(self, wiki, url, session):
+    def __init__(self, wiki, url, client: "Venus"):
         self.url = url
-        self.session = session
+        self.client = client
+        self.session = client.session
         self.wiki = wiki
         self.loop = asyncio.get_event_loop()
 

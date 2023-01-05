@@ -9,6 +9,7 @@ asyncpg = "*"
 bs4 = "*"
 "discord.py" = "~=2.0"
 click = "*"
+"fluent.runtime" = "*"
 
 [dev-packages]
 

@@ -160,9 +160,9 @@ class RCHandler(Handler):
                     
                 details = BlockParams(
                     expiry=expiry,
-                    autoblock_enabled="noautoblock" not in params["flags"],
-                    can_edit_talkpage="nousertalk" not in params["flags"],
-                    can_create_accounts="nocreate" not in params["flags"]
+                    autoblock_disabled="noautoblock" in params["flags"],
+                    cannot_edit_talkpage="nousertalk" in params["flags"],
+                    cannot_create_accounts="nocreate" in params["flags"]
                 )
 
             target = Account(

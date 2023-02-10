@@ -1,17 +1,17 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List, Optional, Union
+from typing import TYPE_CHECKING, List, Optional, Union
 
 from fandom.page import PartialPage
-
-from .wiki import Wiki
 from .account import Account
+if TYPE_CHECKING:
+    from .wiki import Wiki
 
 @dataclass
 class Category:
     id: int
     title: str
-    wiki: Wiki
+    wiki: "Wiki"
 
     @property
     def url(self):

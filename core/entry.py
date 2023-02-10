@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from datetime import datetime
 import enum
-from typing import Any, Generic, List, Optional, TypeVar, Union, TYPE_CHECKING
+from typing import Any, Generic, Iterator, List, Optional, TypeVar, Union, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from fandom.account import Account
@@ -82,20 +82,36 @@ class ProtectionParams:
     comment: Optional[ProtectionData] = None
     upload: Optional[ProtectionData] = None
 
+    def __iter__(self) -> Iterator[tuple[str, ProtectionData]]:
+        for key, value in self.__dict__.items():
+            if key == "cascade":
+                continue
+            if value:
+                yield key, value
 
 # Block log
 @dataclass
 class BlockParams:
     expiry: Optional[datetime]
-    autoblock_enabled: bool
-    can_edit_talkpage: bool
-    can_create_accounts: bool
+    autoblock_disabled: bool
+    cannot_edit_talkpage: bool
+    cannot_create_accounts: bool
+
+    def __iter__(self) -> Iterator[tuple[str, bool]]:
+        for key, value in self.__dict__.items():
+            if key == "expiry":
+                continue
+            if value:
+                yield key, value
 
 # Rights log
 @dataclass
 class Group:
     name: str
     expiry: Optional[datetime]
+
+    def __eq__(self, other: "Group") -> bool:
+        return self.name == other.name
 
 RightsParams = Diff[List[Group]]
 

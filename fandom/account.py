@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from .wiki import Wiki
+if TYPE_CHECKING:
+    from .wiki import Wiki
 
 @dataclass
 class Account:
@@ -10,7 +11,7 @@ class Account:
     """
     name: str
     id: int
-    wiki: Wiki
+    wiki: "Wiki"
 
     @property
     def avatar_url(self):

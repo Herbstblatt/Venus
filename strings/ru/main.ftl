@@ -1,14 +1,14 @@
-create-page = Создал(-а) страницу { $target }
-edit-page = Отредактировал(-а) страницу { $target }
-diff-added = Добавил(-а) **{ $diff } байт**
-diff-removed = Удалил(-а) **{ $diff } байт**
+create-page = Создана страница: { $target }
+edit-page = Отредактирована страница: { $target }
+diff-added = Добавлено **{ $diff } байт**
+diff-removed = Удалено **{ $diff } байт**
 
-delete-page = Удалил(-а) страницу { $target }
-undelete-page = Восстановил(-а) страницу { $target }
+delete-page = Удалена страница: { $target }
+undelete-page = Восстановлена страница: { $target }
 
-protect-page = Защитил(-а) страницу { $target }
-change-protection-settings = Изменил(-а) настройки защиты для страницы { $target }
-unprotect-page = Снял(-а) защиту со страницы { $target }
+protect-page = Защищена страница: { $target }
+change-protection-settings = Изменены настройки защиты для страницы: { $target }
+unprotect-page = Снята защита со страницы: { $target }
 protection-level-autoconfirmed = Только для автоподтверждённых
 protection-level-sysop = Только для администраторов и модераторов контента
 create-protection = Создание
@@ -18,28 +18,31 @@ comment-protection = Комментирование
 upload-protection = Загрузка
 cascade = Каскадная защита
 
-rename-page = Переименовал(-а) страницу
+rename-page = Переименована страница
 suppress-redirect = Без оставления перенаправления
 
-upload-file = Загрузил(-а) файл { $target }
-reupload-file = Перезаписал(-а) файл { $target }
-revert-file = Вернул(-а) файл { $target } к предыдущей версии
+upload-file = Загружен файл: { $target }
+reupload-file = Перезаписан файл: { $target }
+revert-file = Файл { $target } возвращён к предыдущей версии
 
-block-user = Заблокировал(-а) участника { $target }
-change-block-settings = Изменил(-а) настройки блокировки для участника { $target }
-unblock-user = Разблокировал(-а) участника { $target }
+block-user = Заблокирован участник: { $target }
+change-block-settings = Изменены настройки блокировки для участника: { $target }
+unblock-user = Разблокирован участник: { $target }
+infinite-block = бессрочно
 autoblock-disabled = Автоблокировка отключена
-can-edit-talkpage = Может редактировать свою страницу обсуждения
-can-create-accounts = Может создавать аккаунты
+cannot-edit-talkpage = Не может редактировать свою страницу обсуждения
+cannot-create-accounts = Не может создавать аккаунты
 
-change-user-rights = Изменил(-а) группы участника { $target }
+change-user-rights = Изменены группы участника: { $target }
+added-groups = Добавлены группы
+removed-groups = Удалены группы
 
 
-create-post = Создал(-а) пост { $target }
-edit-post = Отредактировал(-а) пост { $target }
-create-reply = Ответил(-а) на пост { $target }
-edit-reply = Отредактировал(-а) ответ на пост { $target }
-create-comment = Оставил(-а) комментарий к странице { $target }
+create-post = Создан пост: { $target }
+edit-post = Отредактирован пост: { $target }
+create-reply = Создан ответ на пост: { $target }
+edit-reply = Отредактирован ответ на пост: { $target }
+create-comment = Оставлен комментарий к странице: { $target }
 category = В категории { $title }
 talkpage = На стене участника { $title }
 text = Текст сообщения

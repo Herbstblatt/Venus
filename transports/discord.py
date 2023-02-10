@@ -6,8 +6,8 @@ from discord import Embed, Webhook
 from core.abc import Transport
 from core.entry import Action, BlockParams, Diff, Entry, ActionType, ProtectionParams, RenameParams, RightsParams
 from fandom.account import Account
-from fandom.discussions import Post, Thread
-from fandom.page import File, Page, PageVersion
+from fandom.discussions import Category, Post, Thread
+from fandom.page import File, Page, PageVersion, PartialPage
 
 ICONS = {
     "create": "<:venus_edit:941018307421679666>",
@@ -17,7 +17,9 @@ ICONS = {
     "upload": "<:venus_upload:941050114896691271>",
     "arrow": "<:venus_arrow:1073621942617251890>",
     "info": "<:venus_info:1073623049666039870>",
-    "expiry": "<:venus_expiry:1073628893422026872>"
+    "expiry": "<:venus_expiry:1073628893422026872>",
+    "category": "<:venus_post_category:966008360103202956>",
+    "user": "<:user:966009692117667882>"
 }
 
 def chunks(lst, n):
@@ -39,13 +41,20 @@ class DiscordTransport(Transport):
         else:
             embed = self._prepare_edit(data)
         
-        if data.type is not ActionType.post:
-            assert not isinstance(data.target, Thread)
-            assert not isinstance(data.target, Post)
-            embed.title = self.client.l10n.format_value(
-                str(data.action)[7:].replace("_", "-"),
-                dict(target=data.target.name)
-            )
+        match data.target:
+            case (
+                Thread(parent=PartialPage(name=title))
+                | Thread(title=title)
+                | Post(parent=Thread(parent=PartialPage(name=title)))
+                | Post(parent=Thread(title=title))
+            ):
+                target_name = title
+            case _:
+                target_name = data.target.name
+        embed.title = self.client.l10n.format_value(
+            str(data.action)[7:].replace("_", "-"),
+            dict(target=target_name)
+        )
         
         if isinstance(data.target, Account):
             embed.url = data.target.page_url
@@ -208,7 +217,38 @@ class DiscordTransport(Transport):
         return em
 
     def _prepare_post(self, data: "Entry")-> Embed:
-        pass
+        if isinstance(data.target, Thread):
+            text = data.target.first_post.text  # type: ignore
+        elif isinstance(data.target, Post):
+            text = data.target.text
+        else:
+            raise RuntimeError("invalid data recieved")
+        
+        em = discord.Embed(color=discord.Color.purple())
+        em.add_field(
+            name=self.client.l10n.format_value("text"),
+            value=text
+        )
+
+        match data.target.parent:
+            case Account(name=name, page_url=page_url) | Thread(parent=Account(name=name, page_url=page_url)):
+                em.description = "{icon} {message}".format(
+                    icon=ICONS["user"],
+                    message=self.client.l10n.format_value(
+                        "talkpage", 
+                        dict(title=f"**[{name}]({page_url})**")
+                    )
+                )
+            case Category(title=title, url=url) | Thread(parent=Category(title=title, url=url)):
+                em.description = "{icon} {message}".format(
+                    icon=ICONS["category"],
+                    message=self.client.l10n.format_value(
+                        "category", 
+                        dict(title=f"**[{title}]({url})**")
+                    )
+                )
+
+        return em
     
     async def send(self, data: Embed):
         await self.webhook.send(embed=data)

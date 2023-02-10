@@ -74,7 +74,30 @@ class Venus:
             return_exceptions=True
         )
         return RCData(wiki=wiki, rc=rc_data, posts=posts_data)
-    
+
+    async def populate_ids(self, wiki: Wiki, entries: List["Entry"]):
+        authors_and_ids = {}
+        for entry in entries:
+            authors_and_ids[entry.user.name] = entry.user.id
+        
+        to_query = [k.replace(" ", "_") for k, v in authors_and_ids.items() if v == 0]
+        if not to_query:
+            return
+
+        result = await wiki.api(
+            params=dict(
+                action="query",
+                list="users",
+                ususers="|".join(to_query),
+                format="json"
+            )
+        )
+
+        for user in result["query"]["users"]:
+            authors_and_ids[user["name"]] = user["userid"]
+        for entry in entries:
+            entry.user.id = authors_and_ids[entry.user.name]
+
     async def main(self):
         """Main loop function. Polls and processes recent changes every n minutes"""
         while True:
@@ -124,6 +147,7 @@ class Venus:
             discussions_handler = DiscussionsHandler(self, wiki)
             handled_data.extend(discussions_handler.handle(posts_data))
         
+        await self.populate_ids(wiki, handled_data)
         handled_data.sort(key=lambda e: e.timestamp)
         self.logger.info(f"Done processing for wiki {wiki.url}.")
         self.logger.info(f"Data after processing: {handled_data!r}.")

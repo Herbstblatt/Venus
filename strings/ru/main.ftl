@@ -38,13 +38,14 @@ added-groups = Добавлены группы
 removed-groups = Удалены группы
 
 
-create-post = Создан пост: { $target }
-edit-post = Отредактирован пост: { $target }
-create-reply = Создан ответ на пост: { $target }
-edit-reply = Отредактирован ответ на пост: { $target }
+create-post = Новая тема: { $target }
+edit-post = Отредактирована тема: { $target }
+create-reply = Создан ответ в теме: { $target }
+edit-reply = Отредактирован ответ в теме: { $target }
 create-comment = Оставлен комментарий к странице: { $target }
-category = В категории { $title }
-talkpage = На стене участника { $title }
+edit-comment = Отредактирован комментарий к странице: { $target }
+category = В категории: { $title }
+talkpage = На стене участника: { $title }
 text = Текст сообщения
 
 expiry = Истекает

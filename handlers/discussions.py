@@ -14,8 +14,22 @@ if TYPE_CHECKING:
     from core.client import Venus
 
 action_lookup = {
-    "create": Action.create_post,
-    "update": Action.edit_post
+    "create": {
+        "post": Action.create_post,
+        "message": Action.create_post,
+        "post-reply": Action.create_reply,
+        "message-reply": Action.create_reply,
+        "comment": Action.create_comment,
+        "comment-reply": Action.create_comment
+    },
+    "update": {
+        "post": Action.edit_post,
+        "message": Action.edit_post,
+        "post-reply": Action.edit_reply,
+        "message-reply": Action.edit_reply,
+        "comment": Action.edit_comment,
+        "comment-reply": Action.edit_comment
+    },
 }
 
 def extract_query_param(url: Union[str, ParseResult], param: str) -> str:
@@ -32,8 +46,8 @@ class DiscussionsHandler(Handler):
     def handle_entry(self, data, date: datetime.date) -> Entry:
         time = datetime.datetime.strptime(data["time"], "%H:%M").time()
         timestamp = datetime.datetime.combine(date, time, tzinfo=datetime.timezone.utc)
-        action = action_lookup[data["actionType"]]
         content_type = data["contentType"]
+        action = action_lookup[data["actionType"]][content_type]
 
         soup = BeautifulSoup(data["label"])
         author = cast(Tag, soup.find(attrs={"data-tracking": "action-username__" + content_type})).text
@@ -86,7 +100,7 @@ class DiscussionsHandler(Handler):
             # this is guaranteed to be ParseResult until the api breaks
             url: ParseResult = urlparse(soup.find(attrs={"data-tracking": f"action-view__{content_type}"}).get("href")) # type: ignore
             target_account = Account(
-                name=url.path.split(":")[-1],
+                name=url.path.split(":")[-1].replace("_", " "),
                 id=0,
                 wiki=self.wiki
             )

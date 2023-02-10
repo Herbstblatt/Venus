@@ -43,6 +43,10 @@ class Action(enum.Enum):
 
     create_post = 16
     edit_post = 17
+    create_reply = 18
+    edit_reply = 19
+    create_comment = 20
+    edit_comment = 20
 
 
 @dataclass

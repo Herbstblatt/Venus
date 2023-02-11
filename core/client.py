@@ -63,6 +63,7 @@ class Venus:
         last_check_time = wiki.last_check_time
         wiki.last_check_time = datetime.datetime.utcnow()
         
+        self.logger.debug(f"Making query for wiki {wiki.url} with last_check_time={last_check_time}")
         rc_data, posts_data = await asyncio.gather(
             wiki.fetch_rc(
                 types=["edit", "new", "categorze"],
@@ -112,8 +113,7 @@ class Venus:
                 for task in asyncio.as_completed(tasks):
                     data = await task
                     now = data.wiki.last_check_time
-                    self.logger.debug(now)
-
+                    
                     if isinstance(data.rc, Exception):
                         self.logger.error(f"Exception occured while requesting data for recent changes in {data.wiki.url}: {data.rc!r}")
                         rc_data = None

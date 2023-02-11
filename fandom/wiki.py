@@ -89,11 +89,11 @@ class Wiki:
         if logevents_props:
             params["leprop"] = "|".join(logevents_props)
         if after:
-            params["rcend"] = after.isoformat() + "Z"
-            params["leend"] = after.isoformat() + "Z"
+            params["rcend"] = after.replace(microsecond=0).isoformat() + "Z"
+            params["leend"] = after.replace(microsecond=0).isoformat() + "Z"
         if before:
-            params["rcstart"] = before.isoformat() + "Z"
-            params["lestart"] = before.isoformat() + "Z"
+            params["rcstart"] = before.replace(microsecond=0).isoformat() + "Z"
+            params["lestart"] = before.replace(microsecond=0).isoformat() + "Z"
         if namespaces:
             params["namespaces"] = "|".join([str(ns) for ns in namespaces])
         

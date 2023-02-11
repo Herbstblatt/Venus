@@ -10,7 +10,7 @@ def venus():
 
 @venus.command(help="Runs the logger")
 def run():
-    client = Venus(log_level=logging.WARN)
+    client = Venus(log_level=logging.DEBUG)
     client.run()
 
 @venus.command(help="Adds a new wiki")

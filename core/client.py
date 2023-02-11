@@ -60,16 +60,19 @@ class Venus:
     
     async def fetch_data(self, wiki: Wiki) -> RCData:
         """Fetches RC data for a given wiki"""
+        last_check_time = wiki.last_check_time
+        wiki.last_check_time = datetime.datetime.utcnow()
+        
         rc_data, posts_data = await asyncio.gather(
             wiki.fetch_rc(
                 types=["edit", "new", "categorze"],
                 recent_changes_props=["user", "userid", "ids", "sizes", "flags", "title", "timestamp", "comment"],
                 logevents_props=["user", "userid", "ids", "type", "title", "timestamp", "comment", "details"],
                 limit="max",
-                after=wiki.last_check_time
+                after=last_check_time
             ),
             wiki.fetch_social_activity(
-                after=wiki.last_check_time
+                after=last_check_time
             ),
             return_exceptions=True
         )
@@ -108,8 +111,8 @@ class Venus:
                 tasks = [self.fetch_data(wiki) for wiki in self.wikis]
                 for task in asyncio.as_completed(tasks):
                     data = await task
-                    now = datetime.datetime.utcnow()
-                    data.wiki.last_check_time = now
+                    now = data.wiki.last_check_time
+                    self.logger.debug(now)
 
                     if isinstance(data.rc, Exception):
                         self.logger.error(f"Exception occured while requesting data for recent changes in {data.wiki.url}: {data.rc!r}")

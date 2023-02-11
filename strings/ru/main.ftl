@@ -2,6 +2,7 @@ create-page = Создана страница: { $target }
 edit-page = Отредактирована страница: { $target }
 diff-added = Добавлено **{ $diff } байт**
 diff-removed = Удалено **{ $diff } байт**
+changes = изменения
 
 delete-page = Удалена страница: { $target }
 undelete-page = Восстановлена страница: { $target }

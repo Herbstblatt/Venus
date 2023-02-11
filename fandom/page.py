@@ -38,4 +38,9 @@ class File:
 class PageVersion:
     id: int
     size: int
+    wiki: "Wiki"
     content: Optional[str] = None
+
+    @property
+    def diff_url(self):
+        return self.wiki.url_to(f"Special:Diff/{self.id}")

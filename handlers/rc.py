@@ -33,10 +33,12 @@ class RCHandler(Handler):
         old_version = PageVersion(
             id=data["old_revid"],
             size=data["oldlen"],
+            wiki=self.wiki
         )
         new_version = PageVersion(
             id=data["revid"],
-            size=data["newlen"]
+            size=data["newlen"],
+            wiki=self.wiki
         )
         diff = Diff(
             old=old_version,

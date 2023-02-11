@@ -70,7 +70,7 @@ class DiscordTransport(Transport):
     
     def _prepare_edit(self, data: "Entry") -> Embed:
         assert isinstance(data.target, Page)
-        assert isinstance(data.details, Diff) and isinstance(data.details.old, PageVersion)
+        assert isinstance(data.details, Diff) and isinstance(data.details.old, PageVersion) and isinstance(data.details.new, PageVersion)
         
         diff = data.details.new.size - data.details.old.size
         if diff >= 0:
@@ -81,9 +81,11 @@ class DiscordTransport(Transport):
         em = Embed(
             title=self.client.l10n.format_value("edit-page", dict(target=data.target.name)),
             url=data.target.url,
-            description=(
-                "<:venus_edit:941018307421679666> " +
-                self.client.l10n.format_value(diff_msg, dict(diff=diff))
+            description="{icon} {message} ([{diff_message}]({url}))".format(
+                icon="<:venus_edit:941018307421679666> ",
+                message=self.client.l10n.format_value(diff_msg, dict(diff=diff)),
+                diff_message=self.client.l10n.format_value("changes"),
+                url=data.details.new.diff_url
             ),
             color=discord.Color.green()
         )

@@ -1,4 +1,5 @@
 import logging
+import os
 
 import click
 
@@ -10,7 +11,7 @@ def venus():
 
 @venus.command(help="Runs the logger")
 def run():
-    client = Venus(log_level=logging.DEBUG)
+    client = Venus(log_level=int(os.environ.get("LOG_LEVEL", logging.WARN)))
     client.run()
 
 @venus.command(help="Adds a new wiki")

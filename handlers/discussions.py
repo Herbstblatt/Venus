@@ -132,7 +132,7 @@ class DiscussionsHandler(Handler):
                 first_post = None
             posts = [post]
 
-        elif content_type in ("comment", "comment_reply"):
+        elif content_type in ("comment", "comment-reply"):
             if content_type == "comment":
                 page_class = "action-comment-article-name__comment"
             else:
@@ -174,7 +174,7 @@ class DiscussionsHandler(Handler):
                     timestamp=None,
                 )
                 last_post = Post(
-                    id=int(url.fragment),
+                    id=int(extract_query_param(url, "replyId")),
                     text=cast(Tag, soup.find("em")).text,
                     parent=thread,
                     author=author_account,
@@ -213,7 +213,7 @@ class DiscussionsHandler(Handler):
                 try:
                     entry = self.handle_entry(action, date=date)
                 except RuntimeError:
-                    pass
+                    self.client.logger.warn("Invalid entry recieved, failed to handle", exc_info=True)
                 else:
                     result.append(entry)
 

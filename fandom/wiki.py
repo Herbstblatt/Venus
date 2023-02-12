@@ -45,7 +45,7 @@ class Wiki:
 
     def discussions_url(self, thread_id, reply_id=None):
         """Returns URL to the given post in discussions"""
-        url = f"{self.url}/f/{thread_id}"
+        url = f"{self.url}/f/p/{thread_id}"
         if reply_id:
             url += f"/r/{reply_id}"
         return url

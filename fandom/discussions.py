@@ -27,6 +27,10 @@ class Thread:
 
     @property
     def url(self):
+        if isinstance(self.parent, Account):
+            return f"{self.parent.wall_url}?threadId={self.id}"
+        elif isinstance(self.parent, PartialPage):
+            return f"{self.parent.url}?commentId={self.id}"
         return self.parent.wiki.discussions_url(self.id)
 
 @dataclass
@@ -39,4 +43,8 @@ class Post:
 
     @property
     def url(self):
+        if isinstance(self.parent.parent, Account):
+            return f"{self.parent.url}#{self.id}"
+        elif isinstance(self.parent.parent, PartialPage):
+            return f"{self.parent.url}&replyId={self.id}"
         return self.parent.parent.wiki.discussions_url(self.parent.id, self.id)

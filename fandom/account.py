@@ -20,3 +20,7 @@ class Account:
     @property
     def page_url(self):
         return self.wiki.url_to(f"User:{self.name}")
+
+    @property
+    def wall_url(self):
+        return self.wiki.url_to(f"Message_Wall:{self.name}")

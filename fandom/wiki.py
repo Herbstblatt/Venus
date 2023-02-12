@@ -56,8 +56,11 @@ class Wiki:
 
     async def api(self, params=None):
         """Performs request to MediaWiki api with given params"""
+        self.client.logger.debug(f"Requesting api for wiki {self.url} with params: {params!r}")
         async with self.session.get(self.url + "/api.php", params=params) as resp:
-            return await resp.json()
+            res = await resp.json()
+            self.client.logger.debug(f"For request for wiki {self.url}, recieved {res}")
+            return res
 
     async def query_nirvana(self, **params):
         """Queries Nirvana with given params"""
@@ -72,6 +75,7 @@ class Wiki:
 
     async def fetch_rc(self, *, limit=None, types=None, show=None, recent_changes_props=None, logevents_props=None, before=None, after=None, namespaces=None):
         """Fetches recent changes data from MediaWiki api"""
+        
         params = {
             "action": "query",
             "list": "recentchanges|logevents",

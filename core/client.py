@@ -70,7 +70,8 @@ class Venus:
                 recent_changes_props=["user", "userid", "ids", "sizes", "flags", "title", "timestamp", "comment"],
                 logevents_props=["user", "userid", "ids", "type", "title", "timestamp", "comment", "details"],
                 limit="max",
-                after=last_check_time
+                after=last_check_time,
+                before=wiki.last_check_time
             ),
             wiki.fetch_social_activity(
                 after=last_check_time

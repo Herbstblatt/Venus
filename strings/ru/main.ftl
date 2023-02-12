@@ -22,9 +22,9 @@ cascade = Каскадная защита
 rename-page = Переименована страница
 suppress-redirect = Без оставления перенаправления
 
-upload-file = Загружен файл: { $target }
-reupload-file = Перезаписан файл: { $target }
-revert-file = Файл { $target } возвращён к предыдущей версии
+upload-file = Загружено: { $target }
+reupload-file = Перезаписано: { $target }
+revert-file = { $target } возвращён к предыдущей версии
 
 block-user = Заблокирован участник: { $target }
 change-block-settings = Изменены настройки блокировки для участника: { $target }

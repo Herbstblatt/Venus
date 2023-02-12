@@ -58,6 +58,8 @@ class DiscordTransport(Transport):
         
         if isinstance(data.target, Account):
             embed.url = data.target.page_url
+        elif isinstance(data.target, File):
+            embed.url = data.target.page.url
         else:
             embed.url = data.target.url
         

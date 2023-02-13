@@ -22,6 +22,30 @@ ICONS = {
     "user": "<:user:966009692117667882>"
 }
 
+ACTION_ICONS = {
+    Action.create_page: "<:venus_edit:941018307421679666>",
+    Action.edit_page: "<:venus_edit:941018307421679666>",
+    Action.delete_page: "<:venus_delete:941045581650989116>",
+    Action.undelete_page: "<:venus_update:957216367470329876>",
+    Action.protect_page: "<:venus_protect:941046813664882800>",
+    Action.change_protection_settings: "<:venus_protect:941046813664882800>",
+    Action.unprotect_page: "<:venus_unprotect:941048069494030406>",
+    Action.rename_page: "<:venus_rename:1074688560210387056>",
+    Action.upload_file: "<:venus_upload:941050114896691271>",
+    Action.reupload_file: "<:venus_upload:941050114896691271>",
+    Action.revert_file: "<:venus_upload:941050114896691271>",
+    Action.block_user: "<:venus_ban:1074687563937361970>",
+    Action.change_block_settings: "<:venus_ban:1074687563937361970>",
+    Action.unblock_user: "<:venus_unban:1074687781927931975>",
+    Action.change_user_rights: "<:user:966009692117667882>",
+    Action.create_post: "<:venus_post:941048824426790944>",
+    Action.create_reply: "<:venus_reply:958098500057456780>",
+    Action.create_comment: "<:venus_post:941048824426790944>",
+    Action.edit_post: "<:venus_edit:941018307421679666>",
+    Action.edit_reply: "<:venus_edit:941018307421679666>",
+    Action.edit_comment: "<:venus_edit:941018307421679666>",
+}
+
 def chunks(lst, n):
     """Yield successive n-sized chunks from list. Was taken from https://stackoverflow.com/a/1751478/11393726"""
     for i in range(0, len(lst), n):
@@ -51,18 +75,40 @@ class DiscordTransport(Transport):
                 target_name = title
             case _:
                 target_name = data.target.name
-        embed.title = self.client.l10n.format_value(
-            str(data.action)[7:].replace("_", "-"),
-            dict(target=target_name)
+
+        if isinstance(data.target, Account):
+            url = data.target.page_url
+        elif isinstance(data.target, File):
+            url = data.target.page.url
+        else:
+            url = data.target.url
+        
+        if data.action is Action.rename_page:
+            assert isinstance(data.details, RenameParams)
+            target_msg = "*{old}* → **[{new}]({new_link})**".format(
+                old=data.details.diff.old.name,
+                new=data.details.diff.new.name,
+                new_link=data.details.diff.new.url
+            )
+        else:
+            target_msg = "**[{name}]({url})**".format(
+                name=target_name,
+                url=url
+            )
+
+        title = "{icon} {message}".format(
+            icon=ACTION_ICONS[data.action],
+            message=self.client.l10n.format_value(
+                str(data.action)[7:].replace("_", "-"),
+                dict(target=target_msg)
+            )
         )
         
-        if isinstance(data.target, Account):
-            embed.url = data.target.page_url
-        elif isinstance(data.target, File):
-            embed.url = data.target.page.url
+        if embed.description:
+            embed.description = title + "\n" + embed.description
         else:
-            embed.url = data.target.url
-        
+            embed.description = title
+
         if data.summary:
             embed.add_field(name="Причина", value=data.summary, inline=False)
         
@@ -81,10 +127,8 @@ class DiscordTransport(Transport):
             diff_msg = "diff-removed"
 
         em = Embed(
-            title=self.client.l10n.format_value("edit-page", dict(target=data.target.name)),
-            url=data.target.url,
             description="{icon} {message} ([{diff_message}]({url}))".format(
-                icon="<:venus_edit:941018307421679666> ",
+                icon=ICONS["info"],
                 message=self.client.l10n.format_value(diff_msg, dict(diff=abs(diff))),
                 diff_message=self.client.l10n.format_value("changes"),
                 url=data.details.new.diff_url
@@ -117,12 +161,6 @@ class DiscordTransport(Transport):
             
             case Action.rename_page:
                 assert isinstance(data.details, RenameParams)
-                description += "*{old_name}* {arrow} **[{new_name}]({link})**".format(
-                    arrow=ICONS["arrow"],
-                    old_name=data.details.diff.old.name,
-                    new_name=data.details.diff.new.name,
-                    link=data.details.diff.new.url
-                )
                 if data.details.suppress_redirect:
                     description += "\n{icon} {message}".format(
                         icon=ICONS["info"],

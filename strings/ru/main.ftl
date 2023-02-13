@@ -19,7 +19,7 @@ comment-protection = Комментирование
 upload-protection = Загрузка
 cascade = Каскадная защита
 
-rename-page = Переименована страница
+rename-page = Переименована страница: { $target }
 suppress-redirect = Без оставления перенаправления
 
 upload-file = Загружено: { $target }

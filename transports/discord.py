@@ -85,7 +85,7 @@ class DiscordTransport(Transport):
             url=data.target.url,
             description="{icon} {message} ([{diff_message}]({url}))".format(
                 icon="<:venus_edit:941018307421679666> ",
-                message=self.client.l10n.format_value(diff_msg, dict(diff=diff)),
+                message=self.client.l10n.format_value(diff_msg, dict(diff=abs(diff))),
                 diff_message=self.client.l10n.format_value("changes"),
                 url=data.details.new.diff_url
             ),

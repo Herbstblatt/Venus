@@ -45,7 +45,7 @@ class DiscussionsHandler(Handler):
 
     def handle_entry(self, data, date: datetime.date) -> Entry:
         time = datetime.datetime.strptime(data["time"], "%H:%M").time()
-        timestamp = datetime.datetime.combine(date, time, tzinfo=datetime.timezone.utc)
+        timestamp = datetime.datetime.combine(date, time)
         content_type = data["contentType"]
         action = action_lookup[data["actionType"]][content_type]
 

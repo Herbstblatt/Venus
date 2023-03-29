@@ -50,7 +50,12 @@ class Venus:
                                         GROUP BY id;""")
             self.logger.debug("Wiki list was sucsessfully fetched. Handling...")
             for row in wikis:
-                wiki = Wiki(row["id"], row["url"], row["last_check_time"], self)
+                wiki = Wiki(
+                    wiki_id=row["id"], 
+                    url=row["url"], 
+                    last_check_time=row["last_check_time"],
+                    client=self
+                )
                 for transport_type, transport_url in zip(row["ttypes"], row["turls"]):
                     wiki.add_transport(transport_type, transport_url)
                 self.logger.debug(f"{row['id']} was processed")
@@ -60,21 +65,17 @@ class Venus:
     
     async def fetch_data(self, wiki: Wiki) -> RCData:
         """Fetches RC data for a given wiki"""
-        last_check_time = wiki.last_check_time
-        wiki.last_check_time = datetime.datetime.utcnow()
-        
-        self.logger.debug(f"Making query for wiki {wiki.url} with last_check_time={last_check_time}")
+        self.logger.debug(f"Making query for wiki {wiki.url} with last_check_time={wiki.last_check_time}")
         rc_data, posts_data = await asyncio.gather(
             wiki.fetch_rc(
                 types=["edit", "new", "categorze"],
                 recent_changes_props=["user", "userid", "ids", "sizes", "flags", "title", "timestamp", "comment"],
                 logevents_props=["user", "userid", "ids", "type", "title", "timestamp", "comment", "details"],
                 limit="max",
-                after=last_check_time,
-                before=wiki.last_check_time
+                after=wiki.last_check_time,
             ),
             wiki.fetch_social_activity(
-                after=last_check_time
+                after=wiki.last_check_time
             ),
             return_exceptions=True
         )
@@ -113,7 +114,6 @@ class Venus:
                 tasks = [self.fetch_data(wiki) for wiki in self.wikis]
                 for task in asyncio.as_completed(tasks):
                     data = await task
-                    now = data.wiki.last_check_time
                     
                     if isinstance(data.rc, Exception):
                         self.logger.error(f"Exception occured while requesting data for recent changes in {data.wiki.url}: {data.rc!r}")
@@ -129,13 +129,13 @@ class Venus:
 
                     if rc_data or posts_data:
                         self.logger.info(f"Ready for {data.wiki.url}, now handling...")
-                        self.loop.create_task(self.handle(data.wiki, rc_data, posts_data, time=now))
+                        self.loop.create_task(self.handle(data.wiki, rc_data, posts_data))
                     else:
                         self.logger.error(f"Both requests returned an exception, skipping wiki {data.wiki.url}.")
 
             await asyncio.sleep(10)
 
-    async def handle(self, wiki, rc_data, posts_data, time):
+    async def handle(self, wiki: Wiki, rc_data, posts_data):
         handled_data: List[Entry] = []
         if rc_data:
             self.logger.info(f"Processing RC for wiki {wiki.url}...")
@@ -151,6 +151,10 @@ class Venus:
             discussions_handler = DiscussionsHandler(self, wiki)
             handled_data.extend(discussions_handler.handle(posts_data))
         
+        if not handled_data:
+            self.logger.info(f"No updates recieved for wiki {wiki.url}.")
+            return
+
         await self.populate_ids(wiki, handled_data)
         handled_data.sort(key=lambda e: e.timestamp)
         self.logger.info(f"Done processing for wiki {wiki.url}.")
@@ -162,8 +166,9 @@ class Venus:
         
         await asyncio.gather(*tasks)
         
+        wiki.last_check_time = handled_data[-1].timestamp + datetime.timedelta(seconds=1)
         async with self.pool.acquire() as conn:
-            await conn.execute("UPDATE wikis SET last_check_time = $1 WHERE id = $2", time, wiki.id)
+            await conn.execute("UPDATE wikis SET last_check_time = $1 WHERE id = $2", wiki.last_check_time, wiki.id)
             self.logger.info(f"Updated last_check_time for wiki {wiki.url}.")
 
     async def cleanup(self, signal):

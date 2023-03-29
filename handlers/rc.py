@@ -1,15 +1,21 @@
 from contextlib import suppress
-from typing import List
+from datetime import datetime
+import re
+import typing
+from typing import List, Optional
 
-from datetime import datetime, timezone
 from core.abc import Handler
 from core.entry import Action, ActionType, BlockParams, Diff, Entry, Group, ProtectionData, ProtectionLevel, ProtectionParams, RenameParams
 from fandom.account import Account
 from fandom.page import Page, PageVersion, File
 from fandom.wiki import Wiki
 
+
+WIKILINK_REGEX = re.compile(r"\[\[(.+?)(?:\|(.*?))?\]\]([^ `\n]+)?")
+
 def from_mw_timestamp(timestamp) -> datetime:
-    return datetime.fromisoformat(timestamp[:-1]).replace(tzinfo=timezone.utc)
+    return datetime.fromisoformat(timestamp[:-1])
+
 
 class RCHandler(Handler):
     def __init__(self, client, wiki: Wiki):
@@ -56,7 +62,7 @@ class RCHandler(Handler):
             target=page,
             wiki=self.wiki,
             user=author,
-            summary=data["comment"],
+            summary=self.render_summary(data["comment"]),
             details=diff,
             timestamp=from_mw_timestamp(data["timestamp"])
         )
@@ -213,11 +219,34 @@ class RCHandler(Handler):
             target=target,
             wiki=self.wiki,
             user=author,
-            summary=data["comment"],
+            summary=self.render_summary(data["comment"]),
             details=details,
             timestamp=from_mw_timestamp(data["timestamp"])
         )
+    
+    def link_to_hyperlink(self, match: typing.Match) -> str:
+        target: str = match.group(1)
+        title: Optional[str] = match.group(2)
 
+        if title == "":
+            title = target.split(":")[-1]
+        if title is None:
+            title = target
+        
+        url = self.wiki.url_to(target)
+        return f"[{title}](<{url}>)"
+
+    def render_summary(self, text: Optional[str]) -> Optional[str]:
+        self.client.logger.debug("Rendering summary: " + str(text))
+        if text is None:
+            return None
+
+        for match in WIKILINK_REGEX.finditer(text):
+            self.client.logger.debug("Match found: " + match.group(0))
+            text = text.replace(match.group(0), self.link_to_hyperlink(match), 1)
+        
+        return text
+    
     def handle(self, data):
         handled_data: List[Entry] = []
 

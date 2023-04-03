@@ -46,7 +46,7 @@ class Action(enum.Enum):
     create_reply = 18
     edit_reply = 19
     create_comment = 20
-    edit_comment = 20
+    edit_comment = 21
 
 
 @dataclass

@@ -1,5 +1,5 @@
 import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 from urllib.parse import urlencode
 
 from transports import discord
@@ -14,10 +14,15 @@ class Wiki:
     def __init__(self, wiki_id: int, url: str, last_check_time: datetime.datetime, client: "Venus"):
         self.url = url
         self.id = wiki_id
+        self.name: Optional[str] = None
         self.last_check_time = last_check_time
         self.client = client
         self.session = client.session
         self.transports = []
+    
+    @property
+    def favicon(self):
+        return f"https://www.google.com/s2/favicons?domain={self.url}"
     
     def add_transport(self, type, url):
         """Adds a new transport to the list of wiki transports."""
@@ -51,12 +56,23 @@ class Wiki:
         """Returns URL to the given tag discussions"""
         return f"{self.url}/f/t/{article_name.replace(' ', '_')}"
 
-    async def query_mw(self, params=None):
+    async def query_mw(self, params):
         """Performs request to MediaWiki api with given params"""
+        if self.name is None:
+            # retrieve name upon first request
+            if "meta" not in params:
+                params["meta"] = "siteinfo"
+            elif "siteinfo" not in params["meta"]:
+                params["meta"] += "|siteinfo"
+        
         self.client.logger.debug(f"Requesting api for wiki {self.url} with params: {params!r}")
         async with self.session.get(self.url + "/api.php", params=params) as resp:
             res = await resp.json()
             self.client.logger.debug(f"For request for wiki {self.url}, recieved {res}")
+            
+            if self.name is None:
+                self.name = res["query"]["general"]["sitename"]
+
             return res
 
     async def query_nirvana(self, **params):

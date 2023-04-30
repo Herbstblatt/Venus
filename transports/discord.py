@@ -113,6 +113,7 @@ class DiscordTransport(Transport):
             embed.add_field(name="Причина", value=data.summary, inline=False)
         
         embed.set_author(name=data.user.name, url=data.user.page_url, icon_url=data.user.avatar_url)
+        embed.set_footer(text=data.wiki.name, icon_url=data.wiki.favicon)
         embed.timestamp = data.timestamp
         return embed
     

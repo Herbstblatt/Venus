@@ -3,7 +3,8 @@ import logging
 import signal
 import datetime
 from collections import namedtuple
-from typing import List, TYPE_CHECKING
+import typing
+from typing import List, TYPE_CHECKING, Optional
 
 import aiohttp
 import asyncpg
@@ -18,7 +19,11 @@ if TYPE_CHECKING:
 
 __version__ = "0.0.1"
 
-RCData = namedtuple("data", "wiki rc posts")
+class RCData(typing.NamedTuple):
+    wiki: Wiki
+    rc: dict | BaseException
+    activity: list | BaseException
+    posts: dict | BaseException | None
 
 class Venus:
     """Recent changes logger."""
@@ -64,7 +69,7 @@ class Venus:
         wiki.last_check_time = datetime.datetime.utcnow()
         
         self.logger.debug(f"Making query for wiki {wiki.url} with last_check_time={last_check_time}")
-        rc_data, posts_data = await asyncio.gather(
+        rc_data, activity_data, posts_data = await asyncio.gather(
             wiki.fetch_rc(
                 types=["edit", "new", "categorze"],
                 recent_changes_props=["user", "userid", "ids", "sizes", "flags", "title", "timestamp", "comment"],
@@ -76,9 +81,10 @@ class Venus:
             wiki.fetch_social_activity(
                 after=last_check_time
             ),
+            wiki.fetch_recent_posts(),
             return_exceptions=True
         )
-        return RCData(wiki=wiki, rc=rc_data, posts=posts_data)
+        return RCData(wiki=wiki, rc=rc_data, activity=activity_data, posts=posts_data)
 
     async def populate_ids(self, wiki: Wiki, entries: List["Entry"]):
         authors_and_ids = {}
@@ -89,7 +95,7 @@ class Venus:
         if not to_query:
             return
 
-        result = await wiki.api(
+        result = await wiki.query_mw(
             params=dict(
                 action="query",
                 list="users",
@@ -121,21 +127,27 @@ class Venus:
                     else:
                         rc_data = data.rc
 
+                    if isinstance(data.activity, Exception):
+                        self.logger.error(f"Exception occured while requesting social activity in {data.wiki.url}: {data.activity!r}")
+                        activity_data = None
+                    else:
+                        activity_data = data.activity
+
                     if isinstance(data.posts, Exception):
-                        self.logger.error(f"Exception occured while requesting data for posts in {data.wiki.url}: {data.posts!r}")
+                        self.logger.error(f"Exception occured while requesting data for posts in {data.wiki.url}: {data.activity!r}")
                         posts_data = None
                     else:
                         posts_data = data.posts
 
-                    if rc_data or posts_data:
+                    if rc_data or activity_data:
                         self.logger.info(f"Ready for {data.wiki.url}, now handling...")
-                        self.loop.create_task(self.handle(data.wiki, rc_data, posts_data, time=now))
+                        self.loop.create_task(self.handle(data.wiki, rc_data, activity_data, posts_data, time=now))
                     else:
                         self.logger.error(f"Both requests returned an exception, skipping wiki {data.wiki.url}.")
 
             await asyncio.sleep(10)
 
-    async def handle(self, wiki, rc_data, posts_data, time):
+    async def handle(self, wiki: Wiki, rc_data, activity_data, posts_data, time):
         handled_data: List[Entry] = []
         if rc_data:
             self.logger.info(f"Processing RC for wiki {wiki.url}...")
@@ -144,12 +156,12 @@ class Venus:
             rc_handler = RCHandler(self, wiki)
             handled_data.extend(rc_handler.handle(rc_data))
 
-        if posts_data:
+        if activity_data:
             self.logger.info(f"Processing posts for wiki {wiki.url}...")
-            self.logger.debug(f"Recieved {posts_data}")
+            self.logger.debug(f"Recieved {activity_data}")
 
             discussions_handler = DiscussionsHandler(self, wiki)
-            handled_data.extend(discussions_handler.handle(posts_data))
+            handled_data.extend(discussions_handler.handle(activity_data, posts_data))
         
         await self.populate_ids(wiki, handled_data)
         handled_data.sort(key=lambda e: e.timestamp)

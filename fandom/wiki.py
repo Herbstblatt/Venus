@@ -1,9 +1,6 @@
+import datetime
 from typing import TYPE_CHECKING
 from urllib.parse import urlencode
-
-import asyncio
-import aiohttp
-import datetime
 
 from transports import discord
 
@@ -54,7 +51,7 @@ class Wiki:
         """Returns URL to the given tag discussions"""
         return f"{self.url}/f/t/{article_name.replace(' ', '_')}"
 
-    async def api(self, params=None):
+    async def query_mw(self, params=None):
         """Performs request to MediaWiki api with given params"""
         self.client.logger.debug(f"Requesting api for wiki {self.url} with params: {params!r}")
         async with self.session.get(self.url + "/api.php", params=params) as resp:
@@ -101,7 +98,7 @@ class Wiki:
         if namespaces:
             params["namespaces"] = "|".join([str(ns) for ns in namespaces])
         
-        return await self.api(params)
+        return await self.query_mw(params)
         
     async def fetch_social_activity(self, *, after=None):
         """Fetches data about latest social activity"""
@@ -114,3 +111,8 @@ class Wiki:
         data = await self.query_nirvana(controller="ActivityApiController", method="getSocialActivity", **params) or []
 
         return data
+    
+    async def fetch_recent_posts(self):
+        """Fetches the list of recent posts."""
+        return await self.query_nirvana(controller="DiscussionPost", method="getPosts")
+    

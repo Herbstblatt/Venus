@@ -1,6 +1,7 @@
+import json
 from bs4 import BeautifulSoup, Tag
 import datetime
-from typing import TYPE_CHECKING, List, Union, cast
+from typing import TYPE_CHECKING, List, Literal, Union, cast
 from urllib.parse import ParseResult, parse_qs, urlparse
 
 from fandom.account import Account
@@ -42,14 +43,60 @@ class DiscussionsHandler(Handler):
         self.client = client
         self.wiki = wiki
         
+    def get_action(self, data) -> Action:
+        return action_lookup[data["actionType"]][data["contentType"]]
 
-    def handle_entry(self, data, date: datetime.date) -> Entry:
-        time = datetime.datetime.strptime(data["time"], "%H:%M").time()
-        timestamp = datetime.datetime.combine(date, time, tzinfo=datetime.timezone.utc)
-        content_type = data["contentType"]
-        action = action_lookup[data["actionType"]][content_type]
 
-        soup = BeautifulSoup(data["label"])
+    def parse_text_from_json(self, data) -> str:
+        text = ""
+        
+        match data["type"]:
+            case "code_block":
+                placeholder = "```{}```"
+            case "paragraph":
+                placeholder = "{}\n"
+            case _:
+                placeholder = "{}"
+        
+        content = data.get("content")
+        if content:
+            for node in content:
+                if data["type"] == "bulletList":
+                    text += "* "
+                elif data["type"] == "orderedList":
+                    text += "1. "
+                
+                text += self.parse_text_from_json(node)
+        
+        else:
+            if data["type"] == "text":
+                text = data["text"]
+                for mark in data.get("marks", []):
+                    match mark:
+                        case {'type': 'strong'}:
+                            text = f"**{text}**"
+                        case {'type': 'em'}:
+                            text = f"*{text}*"
+                        case {'type': 'link', 'attrs': {'href': url}}:
+                            text = f"[{text}]({url})"
+                    
+        return placeholder.format(text)
+    
+
+    def get_text(self, action_type: Literal["create", "update"], soup: BeautifulSoup, post_data: dict) -> str:
+        if action_type == "update":
+            return cast(Tag, soup.find("em")).text
+        return self.parse_text_from_json(json.loads(post_data["jsonModel"])).strip()
+
+
+    def handle_entry(self, social_activity_data, post_data, date: datetime.date) -> Entry:
+        time = datetime.datetime.strptime(social_activity_data["time"], "%H:%M").time()
+        timestamp = datetime.datetime.combine(date, time)
+        content_type = social_activity_data["contentType"]
+        action_type = social_activity_data["actionType"]
+        action = self.get_action(social_activity_data)
+
+        soup = BeautifulSoup(social_activity_data["label"])
         author = cast(Tag, soup.find(attrs={"data-tracking": "action-username__" + content_type})).text
         author_account = Account(name=author, id=0, wiki=self.wiki)
         
@@ -79,7 +126,7 @@ class DiscussionsHandler(Handler):
             post_link = cast(Tag, soup.find(attrs={"data-tracking": f"action-view__{content_type}"})).get("href")
             post = Post(
                 id=int(cast(str, post_link).split("/")[-1]),
-                text=cast(Tag, soup.find("em")).text,
+                text=self.get_text(action_type, soup, post_data),
                 parent=thread,
                 author=author_account,
                 timestamp=timestamp,
@@ -120,7 +167,7 @@ class DiscussionsHandler(Handler):
                 post_id = thread.id
             post = Post(
                 id=post_id,
-                text=cast(Tag, soup.find("em")).text,
+                text=self.get_text(action_type, soup, post_data),
                 parent=thread,
                 author=author_account,
                 timestamp=timestamp,
@@ -157,7 +204,7 @@ class DiscussionsHandler(Handler):
             if content_type == "comment":
                 first_post = Post(
                     id=thread.id,
-                    text=cast(Tag, soup.find("em")).text,
+                    text=self.get_text(action_type, soup, post_data),
                     parent=thread,
                     author=author_account,
                     timestamp=timestamp,
@@ -175,7 +222,7 @@ class DiscussionsHandler(Handler):
                 )
                 last_post = Post(
                     id=int(extract_query_param(url, "replyId")),
-                    text=cast(Tag, soup.find("em")).text,
+                    text=self.get_text(action_type, soup, post_data),
                     parent=thread,
                     author=author_account,
                     timestamp=timestamp,
@@ -205,27 +252,25 @@ class DiscussionsHandler(Handler):
         )
 
 
-    def handle(self, data) -> List[Entry]:
+    def handle(self, data, posts) -> List[Entry]:
         result = []
+        curr_post_idx = 0
+        posts = posts["_embedded"]["doc:posts"]
         for day in data:
             date = datetime.datetime.strptime(day["date"], "%d %B %Y").date()
             for action in day["actions"]:
+                entry_action = self.get_action(action)
+                
                 try:
-                    entry = self.handle_entry(action, date=date)
-                except RuntimeError:
+                    curr_post = posts[curr_post_idx:curr_post_idx+1][0]  # this is done to avoid ListIndexOutOfRange
+                    entry = self.handle_entry(action, curr_post, date=date)
+                except Exception:
                     self.client.logger.warn("Invalid entry recieved, failed to handle", exc_info=True)
                 else:
                     result.append(entry)
+                
+                if entry_action not in [Action.edit_comment, Action.edit_post, Action.edit_reply]:
+                    curr_post_idx += 1
 
         return result
     
-    def get_text(self, data):
-        text = ""
-        content = data.get("content")
-        if content:
-            for node in content:
-                text += self.get_text(node)
-        else:
-            if data["type"] == "text":
-                text += data["text"]
-        return text.strip()

@@ -9,6 +9,8 @@ from typing import List, TYPE_CHECKING, Optional
 import aiohttp
 import asyncpg
 import fluent.runtime
+from core.abc import has_flag
+from core.entry import ActionType
 
 from fandom.wiki import Wiki 
 from handlers.discussions import DiscussionsHandler
@@ -18,6 +20,7 @@ if TYPE_CHECKING:
     from core.entry import Entry
 
 __version__ = "0.0.1"
+
 
 class RCData(typing.NamedTuple):
     wiki: Wiki
@@ -49,15 +52,15 @@ class Venus:
     async def load(self):
         """Loads list of wikis and transports from database"""
         async with self.pool.acquire() as conn:
-            wikis = await conn.fetch("""SELECT wikis.id, wikis.url, wikis.last_check_time, array_agg(transports.type) as ttypes, array_agg(transports.url) as turls
+            wikis = await conn.fetch("""SELECT wikis.id, wikis.url, wikis.last_check_time, array_agg(transports.type) as ttypes, array_agg(transports.url) as turls, array_agg(transports.actions) as tactions
                                         FROM wikis, transports
                                         WHERE wikis.id = transports.wiki_id
                                         GROUP BY id;""")
             self.logger.debug("Wiki list was sucsessfully fetched. Handling...")
             for row in wikis:
                 wiki = Wiki(row["id"], row["url"], row["last_check_time"], self)
-                for transport_type, transport_url in zip(row["ttypes"], row["turls"]):
-                    wiki.add_transport(transport_type, transport_url)
+                for transport_type, transport_url, transport_action in zip(row["ttypes"], row["turls"], row["tactions"]):
+                    wiki.add_transport(transport_type, transport_url, transport_action)
                 self.logger.debug(f"{row['id']} was processed")
                 self.wikis.append(wiki)
             else:
@@ -65,6 +68,8 @@ class Venus:
     
     async def fetch_data(self, wiki: Wiki) -> RCData:
         """Fetches RC data for a given wiki"""
+        
+        # TODO: Make this fetch only required data
         last_check_time = wiki.last_check_time
         wiki.last_check_time = datetime.datetime.utcnow()
         

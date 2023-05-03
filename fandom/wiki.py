@@ -1,6 +1,7 @@
 import datetime
 from typing import TYPE_CHECKING, Optional
 from urllib.parse import urlencode
+from core.abc import Transport
 
 from transports import discord
 
@@ -18,16 +19,23 @@ class Wiki:
         self.last_check_time = last_check_time
         self.client = client
         self.session = client.session
-        self.transports = []
+        self.transports: list[Transport] = []
     
     @property
     def favicon(self):
         return f"https://www.google.com/s2/favicons?domain={self.url}"
     
-    def add_transport(self, type, url):
+    @property
+    def actions(self):
+        res = 0
+        for transport in self.transports:
+            res |= transport.actions
+        return res
+    
+    def add_transport(self, type, url, actions):
         """Adds a new transport to the list of wiki transports."""
         if type == "discord":
-            self.transports.append(discord.DiscordTransport(wiki=self, url=url, client=self.client))
+            self.transports.append(discord.DiscordTransport(wiki=self, url=url, actions=actions, client=self.client))
         else:
             raise InvalidTransportType
 
@@ -89,9 +97,15 @@ class Wiki:
     async def fetch_rc(self, *, limit=None, types=None, show=None, recent_changes_props=None, logevents_props=None, before=None, after=None, namespaces=None):
         """Fetches recent changes data from MediaWiki api"""
         
+        to_query = []
+        if recent_changes_props:
+            to_query.append("recentchanges")
+        if logevents_props:
+            to_query.append("logevents")
+        
         params = {
             "action": "query",
-            "list": "recentchanges|logevents",
+            "list": "|".join(to_query),
             "format": "json"
         }
         if limit:

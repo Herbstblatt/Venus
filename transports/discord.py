@@ -53,8 +53,8 @@ def chunks(lst, n):
 
 class DiscordTransport(Transport):
 
-    def __init__(self, wiki, url, client):
-        super().__init__(wiki, url, client)
+    def __init__(self, wiki, url, actions, client):
+        super().__init__(wiki, url, actions, client)
         self.webhook = Webhook.from_url(self.url, session=self.session)  
 
     def prepare(self, data: "Entry") -> Embed:
@@ -298,6 +298,8 @@ class DiscordTransport(Transport):
 
     async def execute(self, data: list["Entry"]):
         for entry in data:
+            if not self.can_send(entry):
+                continue
             try:
                 embed = self.prepare(entry)
             except:

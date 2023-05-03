@@ -110,7 +110,7 @@ class DiscordTransport(Transport):
             embed.description = title
 
         if data.summary:
-            embed.add_field(name="Причина", value=data.summary, inline=False)
+            embed.add_field(name=self.client.l10n.format_value("summary"), value=data.summary, inline=False)
         
         embed.set_author(name=data.user.name, url=data.user.page_url, icon_url=data.user.avatar_url)
         embed.set_footer(text=data.wiki.name, icon_url=data.wiki.favicon)

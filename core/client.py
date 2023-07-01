@@ -31,7 +31,7 @@ class RCData(typing.NamedTuple):
 class Venus:
     """Recent changes logger."""
 
-    def __init__(self, *, username: str = "Unkhown Fandom User", log_level: int = logging.INFO):
+    def __init__(self, *, username: str = "Unknown Fandom User", log_level: int = logging.INFO):
         self.loop = asyncio.get_event_loop()
         self.session = aiohttp.ClientSession(headers={
             "User-Agent": f"Venus v{__version__} written by Black Spaceship, running by {username}"
@@ -115,7 +115,7 @@ class Venus:
             entry.user.id = authors_and_ids[entry.user.name]
 
     async def main(self):
-        """Main loop function. Polls and processes recent changes every n minutes"""
+        """Main loop function. Polls and processes recent changes every 10 seconds"""
         while True:
             if not self.wikis:
                 self.logger.warn("There aren't any wikis in db so we're skipping this iteration. We'll retry again in 10 seconds...")
@@ -155,7 +155,7 @@ class Venus:
     async def handle(self, wiki: Wiki, rc_data, activity_data, posts_data, time):
         handled_data: List[Entry] = []
         if rc_data:
-            self.logger.info(f"Processing RC for wiki {wiki.url}...")
+            self.logger.info(f"Processing recent changes for wiki {wiki.url}...")
             self.logger.debug(f"Recieved {rc_data}")
             
             rc_handler = RCHandler(self, wiki)
@@ -185,7 +185,7 @@ class Venus:
 
     async def cleanup(self, signal):
         """Cleans up all tasks after logger shutdown"""
-        self.logger.info(f"Receivied exit signal {signal}. Exiting...")
+        self.logger.info(f"Received exit signal {signal}. Exiting...")
         self.logger.info("Closing connection pool...")
         await self.pool.close()
         self.logger.info("Closing client session...")
@@ -212,6 +212,6 @@ class Venus:
             self.loop.run_forever()
         finally:
             self.loop.close()
-            self.logger.info("Sucsessfully shutdown the logger.")
+            self.logger.info("Successfully shutdown the logger.")
 
         

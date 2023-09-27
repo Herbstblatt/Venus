@@ -25,7 +25,7 @@ class File:
 
     @property
     def url(self):
-        return self.page.wiki.url_to("Special:FilePath/" + self.name)
+        return self.page.wiki.url_to("Special:FilePath/" + ":".join(self.name.split(":")[1:]))
 
     @classmethod
     def from_page(cls, page: Page):

@@ -11,7 +11,7 @@ class PartialPage:
 
     @property
     def url(self):
-        return self.wiki.url_to(":".join(self.name.split(":")[1:]))
+        return self.wiki.url_to(self.name)
     
 @dataclass
 class Page(PartialPage):

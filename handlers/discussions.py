@@ -1,8 +1,8 @@
 import json
 from bs4 import BeautifulSoup, Tag
 import datetime
-from typing import TYPE_CHECKING, List, Literal, Union, cast
-from urllib.parse import ParseResult, parse_qs, urlparse
+from typing import TYPE_CHECKING, List, Literal, cast
+from urllib.parse import ParseResult, urlparse
 
 from fandom.account import Account
 from fandom.discussions import Category, Post, Thread
@@ -10,6 +10,7 @@ from fandom.page import PartialPage
 from fandom.wiki import Wiki
 from core.abc import Handler
 from core.entry import Entry, Action, ActionType
+from core.utils import extract_query_param
 
 if TYPE_CHECKING:
     from core.client import Venus
@@ -33,10 +34,6 @@ action_lookup = {
     },
 }
 
-def extract_query_param(url: Union[str, ParseResult], param: str) -> str:
-    if isinstance(url, str):
-        url = urlparse(url)
-    return parse_qs(url.query)[param][0]
 
 class DiscussionsHandler(Handler):
     def __init__(self, client: "Venus", wiki: Wiki):
@@ -83,8 +80,8 @@ class DiscussionsHandler(Handler):
         return placeholder.format(text)
     
 
-    def get_text(self, action_type: Literal["create", "update"], soup: BeautifulSoup, post_data: dict) -> str:
-        if action_type == "update":
+    def get_text(self, action_type: Literal["create", "update"], soup: BeautifulSoup, post_data: dict | None) -> str:
+        if post_data is None or action_type == "update":
             return cast(Tag, soup.find("em")).text
         return self.parse_text_from_json(json.loads(post_data["jsonModel"])).strip()
 
@@ -110,7 +107,7 @@ class DiscussionsHandler(Handler):
             category_element = cast(Tag, soup.find(attrs={"data-tracking": category_class}))
             category = Category(
                 title=category_element.text,
-                id=int(extract_query_param(cast(str, category_element.get("href")), "catId")),
+                id=int(extract_query_param(cast(str, category_element.get("href")), "catId")),  # type: ignore
                 wiki=self.wiki
             )
 
@@ -154,7 +151,7 @@ class DiscussionsHandler(Handler):
 
             thread_element = cast(Tag, soup.find(attrs={"data-tracking": thread_class}))
             thread = Thread(
-                id=int(extract_query_param(cast(str, thread_element.get("href")), "threadId")),
+                id=int(extract_query_param(cast(str, thread_element.get("href")), "threadId")),  # type: ignore
                 title=thread_element.text,
                 parent=target_account,
                 posts=[],
@@ -194,7 +191,7 @@ class DiscussionsHandler(Handler):
             # this is guaranteed to be ParseResult until the api breaks
             url: ParseResult = urlparse(soup.find(attrs={"data-tracking": f"action-view__{content_type}"}).get("href")) # type: ignore
             thread = Thread(
-                id=int(extract_query_param(url, "commentId")),
+                id=int(extract_query_param(url, "commentId")),  # type: ignore
                 title=None,
                 parent=page,
                 posts=[],
@@ -221,7 +218,7 @@ class DiscussionsHandler(Handler):
                     timestamp=None,
                 )
                 last_post = Post(
-                    id=int(extract_query_param(url, "replyId")),
+                    id=int(extract_query_param(url, "replyId")),  # type: ignore
                     text=self.get_text(action_type, soup, post_data),
                     parent=thread,
                     author=author_account,
@@ -262,7 +259,7 @@ class DiscussionsHandler(Handler):
                 entry_action = self.get_action(action)
                 
                 try:
-                    curr_post = posts[curr_post_idx:curr_post_idx+1][0]  # this is done to avoid ListIndexOutOfRange
+                    curr_post = posts[curr_post_idx:curr_post_idx+1].get(0)  # this is done to avoid ListIndexOutOfRange
                     entry = self.handle_entry(action, curr_post, date=date)
                 except Exception:
                     self.client.logger.warn("Invalid entry recieved, failed to handle", exc_info=True)

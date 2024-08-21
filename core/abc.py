@@ -3,13 +3,10 @@ import asyncio
 from typing import TYPE_CHECKING, Any
 
 from core.entry import Entry
+from core.utils import has_flag
 
 if TYPE_CHECKING:
     from core.client import Venus
-
-
-def has_flag(value, flag):
-    return value & flag == flag
 
 
 class Transport(ABC):

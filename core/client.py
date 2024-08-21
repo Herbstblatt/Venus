@@ -9,7 +9,6 @@ from typing import List, TYPE_CHECKING, Optional
 import aiohttp
 import asyncpg
 import fluent.runtime
-from core.abc import has_flag
 from core.entry import ActionType
 
 from fandom.wiki import Wiki 

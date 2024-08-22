@@ -259,7 +259,10 @@ class DiscussionsHandler(Handler):
                 entry_action = self.get_action(action)
                 
                 try:
-                    curr_post = posts[curr_post_idx:curr_post_idx+1].get(0)  # this is done to avoid ListIndexOutOfRange
+                    if len(posts) > curr_post_idx:
+                        curr_post = posts[curr_post_idx] 
+                    else:
+                        curr_post = None
                     entry = self.handle_entry(action, curr_post, date=date)
                 except Exception:
                     self.client.logger.warn("Invalid entry recieved, failed to handle", exc_info=True)

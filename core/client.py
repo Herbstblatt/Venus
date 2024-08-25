@@ -69,21 +69,21 @@ class Venus:
         """Fetches RC data for a given wiki"""
         
         # TODO: Make this fetch only required data
-        last_check_time = wiki.last_check_time
+        wiki.prev_check_time = wiki.last_check_time
         wiki.last_check_time = datetime.datetime.utcnow()
         
-        self.logger.debug(f"Making query for wiki {wiki.url} with last_check_time={last_check_time}")
+        self.logger.debug(f"Making query for wiki {wiki.url} with last_check_time={wiki.prev_check_time}")
         rc_data, activity_data, posts_data = await asyncio.gather(
             wiki.fetch_rc(
                 types=["edit", "new", "categorze"],
                 recent_changes_props=["user", "userid", "ids", "sizes", "flags", "title", "timestamp", "comment"],
                 logevents_props=["user", "userid", "ids", "type", "title", "timestamp", "comment", "details"],
                 limit="max",
-                after=last_check_time,
+                after=wiki.prev_check_time,
                 before=wiki.last_check_time
             ),
             wiki.fetch_social_activity(
-                after=last_check_time
+                after=wiki.prev_check_time
             ),
             wiki.fetch_recent_posts(),
             return_exceptions=True

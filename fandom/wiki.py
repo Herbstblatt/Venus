@@ -17,6 +17,7 @@ class Wiki:
         self.id = wiki_id
         self.name: Optional[str] = None
         self.last_check_time = last_check_time
+        self.prev_check_time = last_check_time
         self.client = client
         self.session = client.session
         self.transports: list[Transport] = []

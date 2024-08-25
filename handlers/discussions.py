@@ -87,8 +87,11 @@ class DiscussionsHandler(Handler):
 
 
     def handle_entry(self, social_activity_data, post_data, date: datetime.date) -> Entry:
-        time = datetime.datetime.strptime(social_activity_data["time"], "%H:%M").time()
-        timestamp = datetime.datetime.combine(date, time)
+        if post_data is None:
+            time = datetime.datetime.strptime(social_activity_data["time"], "%H:%M").time()
+            timestamp = datetime.datetime.combine(date, time)
+        else:
+            timestamp = datetime.datetime.fromtimestamp(post_data["creationDate"]["epochSecond"])
         content_type = social_activity_data["contentType"]
         action_type = social_activity_data["actionType"]
         action = self.get_action(social_activity_data)
@@ -267,7 +270,8 @@ class DiscussionsHandler(Handler):
                 except Exception:
                     self.client.logger.warn("Invalid entry recieved, failed to handle", exc_info=True)
                 else:
-                    result.append(entry)
+                    if entry.timestamp >= self.wiki.prev_check_time:
+                        result.append(entry)
                 
                 if entry_action not in [Action.edit_comment, Action.edit_post, Action.edit_reply]:
                     curr_post_idx += 1

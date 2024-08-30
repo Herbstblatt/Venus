@@ -1,6 +1,6 @@
 import datetime
 from typing import TYPE_CHECKING, Optional
-from urllib.parse import urlencode
+from urllib.parse import urlencode, quote
 from core.abc import Transport
 
 from transports import discord
@@ -42,9 +42,9 @@ class Wiki:
 
     def url_to(self, page, namespace=None, **params):
         """Returns URL to the given page"""
-        page = page.replace(' ', '_')
+        page = quote(page.replace(' ', '_'))
         if namespace:
-            namespace = namespace.replace(' ', '_')
+            namespace = quote(namespace.replace(' ', '_'))
             url = f"{self.url}/wiki/{namespace}:{page}"
         else:
             url = f"{self.url}/wiki/{page}"
